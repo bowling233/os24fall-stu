@@ -15,6 +15,9 @@ int start_kernel() {
     printk("2024");
     printk(" ZJU Operating System\n");
 
+    csr_print(sscratch);
+    csr_write(sscratch, 0x12345678);
+    csr_print(sscratch);
     csr_print(sstatus);
     csr_print(sie);
     csr_print(stvec);
