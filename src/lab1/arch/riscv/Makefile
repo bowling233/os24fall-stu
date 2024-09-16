@@ -1,3 +1,5 @@
+LD = riscv64-linux-gnu-ld
+
 all:
 	${MAKE} -C kernel all
 	${LD} -T kernel/vmlinux.lds kernel/*.o ../../init/*.o ../../lib/*.o -o ../../vmlinux 

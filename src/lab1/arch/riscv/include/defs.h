@@ -3,12 +3,13 @@
 
 #include "stdint.h"
 
-#define csr_read(csr)                   \
-  ({                                    \
-    uint64_t __v;                       \
-    _Static_assert(0, "Unimplemented"); \
-    __v;                                \
-  })
+#define csr_read(csr)                       \
+({                                          \
+    register uint64 __v;                    \
+    asm volatile ("csrr %0, " #csr          \
+                    : "=r" (__v));          \
+    __v;                                    \
+})
 
 #define csr_write(csr, val)                                    \
   ({                                                           \

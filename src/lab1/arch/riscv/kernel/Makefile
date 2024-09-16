@@ -1,6 +1,9 @@
 ASM_SRC		= $(sort $(wildcard *.S))
 C_SRC       = $(sort $(wildcard *.c))
 OBJ		    = $(patsubst %.S,%.o,$(ASM_SRC)) $(patsubst %.c,%.o,$(C_SRC))
+GCC 		= riscv64-linux-gnu-gcc
+INC_PATH	= -I../include -I../../../include
+CFLAG		= ${INC_PATH} -Wall -g
 
 all:$(OBJ)
 
