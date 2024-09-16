@@ -1,31 +1,45 @@
 .extern start_kernel
+.extern sbi_ecall
+.extern _traps
 
     .section .text.init
     .globl _start
 _start:
-    # ----------------------
-    # -  initialize stack  -
-    # ----------------------
     la sp, boot_stack_top
-    # YOUR CODE HERE
 
-    # ----------------------
+    # set stvec = _traps
+    la t0, _traps
+    csrw stvec, t0 # csrrw x0, stvec, t0: stvec -> x0, t0 -> stvec
 
-        # set stvec = _traps
+    # set sie[STIE] = 1
+    li t0, 0x00000020 # bit 5
+    csrs sie, t0 # csrrs x0, sie, t0: sie -> x0, x0 | t0 -> sie
 
-    # ----------------------
+    # set first time interrupt
+    rdtime a0
+    li a1, 10000000
+    add a2, a0, a1 # add 1s
+#if defined(USE_SD)
+.equ QEMU_MTIMECMP_BASE, 0x2004000
+    #if defined(USE_MHARTID)
+    csrr t1, mhartid # [Illegal Instruction Fault] get hartid
+    slli t1, t1, 3 # hartid * 8
+    li t2, QEMU_MTIMECMP_BASE # CLINT + 4000
+    add t1, t2, t1 # mtimecmp in QEMU = CLINT + 4000 + 8 * hartid
+    #else
+    li t1, QEMU_MTIMECMP_BASE # [Store/AMO Access Fault] Default mtimecmp address in QEMU
+    #endif
+    # store by yourself
+    sd a2, 0(t1) # store timer to mtimecmp
+#else
+    # or choose use sbi_ecall
+    addi a0, x0, 0
+    call sbi_ecall
+#endif
 
-        # set sie[STIE] = 1
-
-    # ----------------------
-
-        # set first time interrupt
-
-    # ----------------------
-
-        # set sstatus[SIE] = 1
-
-    # ----------------------
+    # set sstatus[SIE] = 1
+    li t0, 0x00000002 # bit 1
+    csrs sstatus, t0 # csrrs x0, sstatus, t0: sstatus -> x0, x0 | t0 -> sstatus
 
     call start_kernel
 
