@@ -1,12 +1,32 @@
-    .extern start_kernel
-    .section .text.entry
+.extern start_kernel
+
+    .section .text.init
     .globl _start
 _start:
-    #error Unimplemented
-    # ------------------
-    # - your code here -
-    # ------------------
+    # ----------------------
+    # -  initialize stack  -
+    # ----------------------
     la sp, boot_stack_top
+    # YOUR CODE HERE
+
+    # ----------------------
+
+        # set stvec = _traps
+
+    # ----------------------
+
+        # set sie[STIE] = 1
+
+    # ----------------------
+
+        # set first time interrupt
+
+    # ----------------------
+
+        # set sstatus[SIE] = 1
+
+    # ----------------------
+
     call start_kernel
 
     .section .bss.stack
