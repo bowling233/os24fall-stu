@@ -16,6 +16,8 @@ struct sbiret sbi_ecall(uint64_t eid, uint64_t fid,
 		"mv a4, %[arg4]\n"
 		"mv a5, %[arg5]\n"
 		"ecall\n"
+		"mv %[error], a0\n"
+		"mv %[value], a1\n"
 		: [error] "=r" (ret.error), [value] "=r" (ret.value)
 		: [arg0] "r" (arg0), [arg1] "r" (arg1), [arg2] "r" (arg2),
 		  [arg3] "r" (arg3), [arg4] "r" (arg4), [arg5] "r" (arg5),
