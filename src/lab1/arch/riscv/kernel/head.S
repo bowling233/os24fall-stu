@@ -18,7 +18,7 @@ _start:
     # set first time interrupt
     rdtime a0
     li a1, 10000000
-    add a2, a0, a1 # add 1s
+    add a0, a0, a1 # add 1s
 #if defined(USE_SD)
 .equ QEMU_MTIMECMP_BASE, 0x2004000
     #if defined(USE_MHARTID)
@@ -30,11 +30,11 @@ _start:
     li t1, QEMU_MTIMECMP_BASE # [Store/AMO Access Fault] Default mtimecmp address in QEMU
     #endif
     # store by yourself
-    sd a2, 0(t1) # store timer to mtimecmp
+    sd a0, 0(t1) # store timer to mtimecmp
 #else
     # or choose use sbi_ecall
-    addi a0, x0, 0
-    call sbi_ecall
+    addi a7, x0, 0x0 # EID #0x00: sbi_set_timer
+    ecall
 #endif
 
     # set sstatus[SIE] = 1
