@@ -139,9 +139,9 @@ void task_init()
         task[i] = (struct task_struct *)kalloc();
         // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，counter 和 priority 进行如下赋值：
         task[i]->state = TASK_RUNNING;
-        //      task[i].counter  = 0;
+        //     - counter  = 0;
         task[i]->counter = 0;
-        //      task[i].priority = rand() 产生的随机数（控制范围在 [PRIORITY_MIN, PRIORITY_MAX] 之间）
+        //     - priority = rand() 产生的随机数（控制范围在 [PRIORITY_MIN, PRIORITY_MAX] 之间）
         task[i]->priority = PRIORITY_MIN + rand() % (PRIORITY_MAX - PRIORITY_MIN + 1);
         task[i]->pid = i;
         // 3. 为 task[1] ~ task[NR_TASKS - 1] 设置 thread_struct 中的 ra 和 sp
@@ -159,7 +159,7 @@ void task_init()
     printk("...task_init done!\n");
 }
 
-#ifdef TEST_SCHED
+#if TEST_SCHED
 #define MAX_OUTPUT ((NR_TASKS - 1) * 10)
 char tasks_output[MAX_OUTPUT];
 int tasks_output_index = 0;
@@ -183,7 +183,7 @@ void dummy()
             last_counter = current->counter;
             auto_inc_local_var = (auto_inc_local_var + 1) % MOD;
             printk("[PID = %d] is running. auto_inc_local_var = %d\n", current->pid, auto_inc_local_var);
-#ifdef TEST_SCHED
+            #if TEST_SCHED
             tasks_output[tasks_output_index++] = current->pid + '0';
             if (tasks_output_index == MAX_OUTPUT)
             {
