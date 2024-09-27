@@ -183,7 +183,7 @@ void dummy()
             last_counter = current->counter;
             auto_inc_local_var = (auto_inc_local_var + 1) % MOD;
             printk("[PID = %d] is running. auto_inc_local_var = %d\n", current->pid, auto_inc_local_var);
-            #if TEST_SCHED
+#ifdef TEST_SCHED
             tasks_output[tasks_output_index++] = current->pid + '0';
             if (tasks_output_index == MAX_OUTPUT)
             {
