@@ -1,11 +1,16 @@
 .extern start_kernel
 .extern sbi_ecall
 .extern _traps
+.extern mm_init
+.extern task_init
 
     .section .text.init
     .globl _start
 _start:
     la sp, boot_stack_top
+    
+    call mm_init
+    call task_init
 
     # set stvec = _traps
     la t0, _traps

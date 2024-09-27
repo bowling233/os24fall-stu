@@ -9,6 +9,9 @@
 #define NR_TASKS (1 + 31)   // 用于控制最大线程数量（idle 线程 + 31 内核线程）
 #endif
 
+#define FIRST_TASK task[0]
+#define LAST_TASK task[NR_TASKS-1]
+
 #define TASK_RUNNING 0      // 为了简化实验，所有的线程都只有一种状态
 
 #define PRIORITY_MIN 1
