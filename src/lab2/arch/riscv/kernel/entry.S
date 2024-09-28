@@ -106,47 +106,22 @@ __dummy:
     csrw sepc, t0
     sret
 
-.macro savePrev n
-    sd s\n, \n*8+16(a0)
-.endm
-
-.macro loadNext n
-    ld s\n, \n*8+16(a1)
-.endm
-
     .globl __switch_to
     # extern void __switch_to(struct task_struct *prev, struct task_struct *next);
 __switch_to:
     # save state to prev process
     sd ra, 32(a0) # a0->ra = ra
     sd sp, 40(a0) # a0->sp = sp
-    sd s0, 48(a0) # a0->s0 = s0
-    sd s1, 56(a0) # a0->s1 = s1
-    sd s2, 64(a0) # a0->s2 = s2
-    sd s3, 72(a0) # a0->s3 = s3
-    sd s4, 80(a0) # a0->s4 = s4
-    sd s5, 88(a0) # a0->s5 = s5
-    sd s6, 96(a0) # a0->s6 = s6
-    sd s7, 104(a0) # a0->s7 = s7
-    sd s8, 112(a0) # a0->s8 = s8
-    sd s9, 120(a0) # a0->s9 = s9
-    sd s10, 128(a0) # a0->s10 = s10
-    sd s11, 136(a0) # a0->s11 = s11
+    .rept 12
+      sd s\+, \+*8+48(a0) # a0->s0-s11 = s0-s11
+    .endr
 
     # restore state from next process
     ld ra, 32(a1) # ra = a1->ra
     ld sp, 40(a1) # sp = a1->sp
-    ld s0, 48(a1) # s0 = a1->s0
-    ld s1, 56(a1) # s1 = a1->s1
-    ld s2, 64(a1) # s2 = a1->s2
-    ld s3, 72(a1) # s3 = a1->s3
-    ld s4, 80(a1) # s4 = a1->s4
-    ld s5, 88(a1) # s5 = a1->s5
-    ld s6, 96(a1) # s6 = a1->s6
-    ld s7, 104(a1) # s7 = a1->s7
-    ld s8, 112(a1) # s8 = a1->s8
-    ld s9, 120(a1) # s9 = a1->s9
-    ld s10, 128(a1) # s10 = a1->s10
-    ld s11, 136(a1) # s11 = a1->s11
+    .rept 12
+      ld s\+, \+*8+48(a1) # s0-s11 = a1->s0-s11
+    .endr
+    
 
     ret
