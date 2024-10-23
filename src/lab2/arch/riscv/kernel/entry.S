@@ -1,3 +1,4 @@
+.altmacro
 .extern trap_handler
     .section .text.entry
     .align 2
