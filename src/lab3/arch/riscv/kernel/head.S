@@ -3,14 +3,21 @@
 .extern _traps
 .extern mm_init
 .extern task_init
+.extern setup_vm
+.extern setup_vm_final
 
     .section .text.init
     .globl _start
 _start:
     la sp, boot_stack_top
+
+    call setup_vm
+    call relocate
     
     call mm_init
     call task_init
+
+    call setup_vm_final
 
     # set stvec = _traps
     la t0, _traps
@@ -47,6 +54,32 @@ _start:
     csrs sstatus, t0 # csrrs x0, sstatus, t0: sstatus -> x0, x0 | t0 -> sstatus
 
     call start_kernel
+
+relocate:
+    .set BASE_ADDR, 0xffffffe000200000
+    li t1, BASE_ADDR
+    la t0, _start
+    sub t0, t1, t0
+    # set ra = ra + PA2VA_OFFSET
+    add ra, ra, t0
+    # set sp = sp + PA2VA_OFFSET (If you have set the sp before)
+    add sp, sp, t0
+
+    # set satp with early_pgtbl
+    .extern early_pgtbl
+    la t0, early_pgtbl
+    srl t0, t0, 12 # t0 = t0 >> 12
+    li t1, 0x8000000000000000 # SATP_MODE_SV39
+    or t0, t0, t1 # t0 = t0 | t1
+    csrw satp, t0 # csrrw x0, satp, t0: satp -> x0, t0 -> satp
+
+    # flush tlb
+    sfence.vma zero, zero
+
+    # flush icache
+    fence.i
+
+    ret
 
     .section .bss.stack
     .globl boot_stack

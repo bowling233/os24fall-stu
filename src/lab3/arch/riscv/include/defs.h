@@ -39,9 +39,35 @@
 #define OPENSBI_SIZE (0x200000)
 
 #define VM_START (0xffffffe000000000)
-#define VM_END (0xffffffff00000000)
+#define VM_END   (0xffffffff00000000)
 #define VM_SIZE (VM_END - VM_START)
 
 #define PA2VA_OFFSET (VM_START - PHY_START)
+// sv39
+#define PTE_V (1 << 0)
+#define PTE_R (1 << 1)
+#define PTE_W (1 << 2)
+#define PTE_X (1 << 3)
+#define VPN0(vpn) ((vpn) << 12)
+#define VPN1(vpn) ((vpn) << 21)
+#define VPN2(vpn) ((vpn) << 30)
+#define VA2VPN0(addr) (((addr) >> 12) & 0x1ff)
+#define VA2VPN1(addr) (((addr) >> 21) & 0x1ff)
+#define VA2VPN2(addr) (((addr) >> 30) & 0x1ff)
+#define PPN0(ppn) ((ppn) << 10)
+#define PPN1(ppn) ((ppn) << 19)
+#define PPN2(ppn) ((ppn) << 28)
+#define PA2PPN0(addr) (((addr) >> 12) & 0x1ff)
+#define PA2PPN1(addr) (((addr) >> 21) & 0x1ff)
+#define PA2PPN2(addr) (((addr) >> 30) & 0x3ffffff)
+#define PTE_IS_VALID(pte) ((pte) & PTE_V)
+#define PA2PTE(addr) (((addr) >> 2) & 0x003ffffffffffc00)
+#define PTE2PA(pte) (((pte) & 0x003ffffffffffc00) << 2)
+#define PTE2VA(pte) (PA2VA_OFFSET + PTE2PA(pte))
+#define VA2PA(addr) ((addr) - PA2VA_OFFSET)
+#define VA2PTE(addr) (PA2PTE(VA2PA(addr)))
+
+#define SATP_SV39 (8L << 60)
+#define SATP_PPN(addr) (((addr) >> 12) & 0xfffffffffff)
 
 #endif

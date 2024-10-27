@@ -53,34 +53,6 @@ void schedule()
     uint64_t i, next, c;
     struct task_struct **p;
 
-/*
-    for(i = 0; i < NR_TASKS; i++)
-    {
-        print_task("TASK", task[i]);
-        switch (task[i]->state)
-        {
-        case TASK_RUNNING:
-            printk("TASK_RUNNING\n");
-            break;
-        //case TASK_INTERRUPTIBLE:
-        //    printk("TASK_INTERRUPTIBLE\n");
-        //    break;
-        //case TASK_UNINTERRUPTIBLE:
-        //    printk("TASK_UNINTERRUPTIBLE\n");
-        //    break;
-        //case TASK_ZOMBIE:
-        //    printk("TASK_ZOMBIE\n");
-        //    break;
-        //case TASK_STOPPED:
-        //    printk("TASK_STOPPED\n");
-        //    break;
-        default:
-            printk("UNKNOWN\n");
-            break;
-        }
-
-    }
-//*/
     while (1)
     {
         c = 0;
@@ -107,8 +79,6 @@ void schedule()
     }
     switch_to(task[next]);
 }
-
-
 
 void task_init()
 {

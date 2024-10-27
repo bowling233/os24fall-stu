@@ -61,17 +61,20 @@ void trap_handler(uint64_t scause, uint64_t sepc)
     case 0x0000000000000009:
         printk(RED "[exception] Environment call from S-mode, ");
         break;
-    case 0x000000000000000A:
-        printk(RED "[exception] Environment call from M-mode, ");
-        break;
-    case 0x000000000000000B:
+    case 0x000000000000000C:
         printk(RED "[exception] Instruction page fault, ");
         break;
-    case 0x000000000000000C:
+    case 0x000000000000000D:
         printk(RED "[exception] Load page fault, ");
         break;
-    case 0x000000000000000E:
+    case 0x000000000000000F:
         printk(RED "[exception] Store/AMO page fault, ");
+        break;
+    case 0x0000000000000012:
+        printk(RED "[exception] Software check, ");
+        break;
+    case 0x0000000000000013:
+        printk(RED "[exception] Hardware error, ");
         break;
     default:
         if(scause & 0x8000000000000000)
@@ -80,7 +83,7 @@ void trap_handler(uint64_t scause, uint64_t sepc)
             printk(RED "[exception] unknown exception: %x, ", scause);
         break;
     }
-    printk("sepc: %x\n", sepc);
+    printk("sepc: %lx\n", sepc);
 #endif
 
     switch (scause)
