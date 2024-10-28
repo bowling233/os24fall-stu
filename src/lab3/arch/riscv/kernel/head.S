@@ -71,13 +71,9 @@ relocate:
     srl t0, t0, 12 # t0 = t0 >> 12
     li t1, 0x8000000000000000 # SATP_MODE_SV39
     or t0, t0, t1 # t0 = t0 | t1
-    csrw satp, t0 # csrrw x0, satp, t0: satp -> x0, t0 -> satp
 
-    # flush tlb
     sfence.vma zero, zero
-
-    # flush icache
-    fence.i
+    csrw satp, t0 # csrrw x0, satp, t0: satp -> x0, t0 -> satp
 
     ret
 
