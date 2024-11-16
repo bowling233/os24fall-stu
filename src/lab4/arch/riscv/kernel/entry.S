@@ -116,6 +116,14 @@ __switch_to:
     .rept 12
       sd s\+, \+*8+48(a0) # a0->s0-s11 = s0-s11
     .endr
+    csrr t0, sepc
+    sd t0, 144(a0) # a0->sepc = sepc
+    csrr t0, sstatus
+    sd t0, 152(a0) # a0->sstatus = sstatus
+    csrr t0, sscratch
+    sd t0, 160(a0) # a0->sscratch = sscratch
+    csrr t0, satp
+    sd t0, 168(a0) # a0->satp = satp
 
     # restore state from next process
     ld ra, 32(a1) # ra = a1->ra
@@ -123,6 +131,15 @@ __switch_to:
     .rept 12
       ld s\+, \+*8+48(a1) # s0-s11 = a1->s0-s11
     .endr
-
+    ld t0, 144(a1) # sepc = a1->sepc
+    csrw sepc, t0
+    ld t0, 152(a1) # sstatus = a1->sstatus
+    csrw sstatus, t0
+    ld t0, 160(a1) # sscratch = a1->sscratch
+    csrw sscratch, t0
+    ld t0, 168(a1) # satp = a1->satp
+    csrw satp, t0
+    sfence.vma
+    fence.i
 
     ret
