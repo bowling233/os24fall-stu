@@ -70,4 +70,9 @@
 #define SATP_SV39 (8L << 60)
 #define SATP_PPN(addr) (((addr) >> 12) & 0xfffffffffff)
 
+// lab4
+
+#define USER_START (0x0000000000000000) // user space start virtual address
+#define USER_END (0x0000004000000000) // user space end virtual address
+
 #endif
