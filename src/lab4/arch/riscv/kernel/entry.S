@@ -4,10 +4,15 @@
     .align 2
     .globl _traps
 _traps:
-    # YOUR CODE HERE
-    # -----------
+    # 进入 trap 的时候需要切换到内核栈
+    # 如果是内核线程（没有用户栈）触发了异常，则不需要进行切换。（内核线程的 sp 永远指向的内核栈，且 sscratch 为 0）
+    beqz sscratch, 1f
+    mv t0, sp
+    csrr sp, sscratch
+    csrw sscratch, t0
+1:
 
-        # 1. save 32 registers and sepc to stack
+    # 1. save 32 registers and sepc to stack
 
     addi sp, sp, -8*32 # only need 31, but risc-v requires 16-byte alignment for sp
     # no need to save x0
@@ -45,16 +50,13 @@ _traps:
     csrr a1, sepc
     sd a1, 248(sp) # the last one is sepc
 
-    # -----------
-
-        # 2. call trap_handler
+    # 2. call trap_handler
 
     csrr a0, scause
+    mv a2, sp
     call trap_handler
 
-    # -----------
-
-        # 3. restore sepc and 32 registers (x2(sp) should be restore last) from stack
+    # 3. restore sepc and 32 registers (x2(sp) should be restore last) from stack
 
     ld a1, 248(sp) # sepc
     csrw sepc, a1
@@ -91,11 +93,15 @@ _traps:
     ld x31, 240(sp)
     addi sp, sp, 8*32
 
-    # -----------
+    # 处理完成后需要再切换回来
+    # 如果是内核线程（没有用户栈）触发了异常，则不需要进行切换。
+    beqz sscratch, 2f
+    mv t0, sp
+    csrr sp, sscratch
+    csrw sscratch, t0
+2:
 
-        # 4. return from trap
-
-    # -----------
+    # 4. return from trap
 
     sret
 
@@ -105,6 +111,10 @@ _traps:
 __dummy:
     la t0, dummy
     csrw sepc, t0
+    # 在 __dummy 进入用户态模式的时候，我们需要切换这两个栈
+    mv t0, sp
+    csrr sp, sscratch
+    csrw sscratch, t0
     sret
 
     .globl __switch_to
