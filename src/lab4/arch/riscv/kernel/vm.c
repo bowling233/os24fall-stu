@@ -92,6 +92,9 @@ void setup_vm_final(void)
 /* 不要修改该接口的参数和返回值 */
 void create_mapping(uint64_t *pgtbl, uint64_t va, uint64_t pa, uint64_t sz, uint64_t perm)
 {
+#ifdef DEBUG
+    printk("create_mapping: va %lx pa %lx sz %lx perm %lx\n", va, pa, sz, perm);
+#endif
     if (sz == 0)
     {
         return;

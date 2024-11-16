@@ -133,9 +133,9 @@ _traps:
     .extern current
     # special return function for the first time thread sched
 __dummy:
-    la t0, current # task_struct
-    ld t0, 144(t0) # sepc
-    csrw sepc, t0
+    # la t0, current # task_struct
+    # ld t0, 144(t0) # sepc
+    # csrw sepc, t0
     # 在 __dummy 进入用户态模式的时候，我们需要切换这两个栈
     mv t0, sp
     csrr sp, sscratch
