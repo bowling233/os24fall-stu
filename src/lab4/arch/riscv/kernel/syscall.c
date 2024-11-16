@@ -1,4 +1,5 @@
 #include "syscall.h"
+#include "printk.h"
 
 uint64_t sys_write(int fd, void *buf, int count)
 {

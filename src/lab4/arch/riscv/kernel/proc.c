@@ -12,7 +12,7 @@
 
 extern void __dummy();
 extern uint64_t swapper_pg_dir[];
-extern uint64_t _sramdisk, _eramdisk;
+extern uint64_t _sramdisk[], _eramdisk[];
 
 struct task_struct *idle;           // idle process
 struct task_struct *current;        // 指向当前运行线程的 task_struct
@@ -133,6 +133,9 @@ void task_init()
         task[i]->pgd = (uint64_t *)alloc_page();
         memcpy(task[i]->pgd, swapper_pg_dir, PGSIZE);
         // 二进制文件需要先被拷贝到一块新的、供某个进程专用的内存之后再进行映射，来防止所有的进程共享数据，造成预期外的进程间相互影响。
+        // debug
+        printk("sramdisk: %p, eramdisk: %p\n", _sramdisk, _eramdisk);
+        printk("%d\n", (_eramdisk - _sramdisk) / PGSIZE + 1);
         uint64_t *binary = (uint64_t *)alloc_pages((_eramdisk - _sramdisk) / PGSIZE + 1);
         memcpy(binary, (void *)_sramdisk, _eramdisk - _sramdisk);
         // 将 uapp 所在的页面映射到每个进行的页表中

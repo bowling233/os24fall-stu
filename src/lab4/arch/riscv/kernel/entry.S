@@ -6,10 +6,10 @@
 _traps:
     # 进入 trap 的时候需要切换到内核栈
     # 如果是内核线程（没有用户栈）触发了异常，则不需要进行切换。（内核线程的 sp 永远指向的内核栈，且 sscratch 为 0）
-    beqz sscratch, 1f
-    mv t0, sp
-    csrr sp, sscratch
-    csrw sscratch, t0
+    csrr t0, sscratch
+    beqz t0, 1f
+    csrw sscratch, sp
+    mv sp, t0
 1:
 
     # 1. save 32 registers and sepc to stack
@@ -95,10 +95,10 @@ _traps:
 
     # 处理完成后需要再切换回来
     # 如果是内核线程（没有用户栈）触发了异常，则不需要进行切换。
-    beqz sscratch, 2f
-    mv t0, sp
-    csrr sp, sscratch
-    csrw sscratch, t0
+    csrr t0, sscratch
+    beqz t0, 2f
+    csrw sscratch, sp
+    mv sp, t0
 2:
 
     # 4. return from trap
