@@ -1,10 +1,18 @@
 #include "stdint.h"
 #include "printk.h"
 #include "proc.h"
+#include "syscall.h"
 
 void clock_set_next_event();
 
-void trap_handler(uint64_t scause, uint64_t sepc)
+struct pt_regs
+{
+    uint64_t x[31]; // x1-x31
+    uint64_t sepc;
+    // where is sstatus?
+};
+
+void trap_handler(uint64_t scause, uint64_t sepc, struct pt_regs *regs)
 {
     // 通过 `scause` 判断 trap 类型
     // 如果是 interrupt 判断是否是 timer interrupt
@@ -39,7 +47,7 @@ void trap_handler(uint64_t scause, uint64_t sepc)
         break;
     case 0x0000000000000002:
         printk(RED "[exception] Illegal instruction, ");
-        break; 
+        break;
     case 0x0000000000000003:
         printk(RED "[exception] Breakpoint, ");
         break;
@@ -93,6 +101,19 @@ void trap_handler(uint64_t scause, uint64_t sepc)
         clock_set_next_event();
         do_timer();
         break;
+    case 0x0000000000000008:
+    switch(regs->x[16]) // syscall a7 -> x17 -> x[16]
+    {
+        case __NR_write:
+            regs->x[9] = sys_write(regs->x[9], (void *)regs->x[10], regs->x[11]);
+            break;
+        case __NR_getpid:
+            regs->x[9] = sys_getpid();
+            break;
+    }
+        // 针对系统调用这一类异常，我们需要手动完成 sepc + 4
+        asm volatile("csrw sepc, %0"::"r"(sepc + 4));
+    break;
     default:
         break;
     }
