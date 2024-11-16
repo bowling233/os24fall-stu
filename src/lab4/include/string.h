@@ -4,5 +4,6 @@
 #include "stdint.h"
 
 void *memset(void *, int, uint64_t);
+void *memcpy(void *, const void *, uint64_t);
 
 #endif

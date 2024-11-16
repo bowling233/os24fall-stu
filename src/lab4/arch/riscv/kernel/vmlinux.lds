@@ -38,7 +38,7 @@ SECTIONS
         *(.text.init)
         *(.text.entry)
         *(.text .text.*)
-        
+
         _etext = .;
     } >ramv AT>ram
 
@@ -47,7 +47,7 @@ SECTIONS
 
         *(.srodata .srodata.*)
         *(.rodata .rodata.*)
-        
+
         _erodata = .;
     } >ramv AT>ram
 
@@ -72,7 +72,7 @@ SECTIONS
         *(.bss.stack)
         *(.sbss .sbss.*)
         *(.bss .bss.*)
-        
+
         _ebss = .;
     } >ramv AT>ram
 

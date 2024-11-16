@@ -2,13 +2,13 @@
 .extern trap_handler
     .section .text.entry
     .align 2
-    .globl _traps 
+    .globl _traps
 _traps:
     # YOUR CODE HERE
     # -----------
 
         # 1. save 32 registers and sepc to stack
-    
+
     addi sp, sp, -8*32 # only need 31, but risc-v requires 16-byte alignment for sp
     # no need to save x0
     sd x1, 0(sp)
@@ -123,6 +123,6 @@ __switch_to:
     .rept 12
       ld s\+, \+*8+48(a1) # s0-s11 = a1->s0-s11
     .endr
-    
+
 
     ret

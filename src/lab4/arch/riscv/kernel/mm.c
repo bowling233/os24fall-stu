@@ -82,7 +82,7 @@ void buddy_free(uint64_t pfn) {
         left_longest = buddy.bitmap[LEFT_LEAF(index)];
         right_longest = buddy.bitmap[RIGHT_LEAF(index)];
 
-        if (left_longest + right_longest == node_size) 
+        if (left_longest + right_longest == node_size)
             buddy.bitmap[index] = node_size;
         else
             buddy.bitmap[index] = MAX(left_longest, right_longest);
@@ -114,10 +114,10 @@ uint64_t buddy_alloc(uint64_t nrpages) {
 
     while (index) {
         index = PARENT(index);
-        buddy.bitmap[index] = 
+        buddy.bitmap[index] =
             MAX(buddy.bitmap[LEFT_LEAF(index)], buddy.bitmap[RIGHT_LEAF(index)]);
     }
-    
+
     return pfn;
 }
 
@@ -142,7 +142,7 @@ void *kalloc() {
 
     // r = kmem.freelist;
     // kmem.freelist = r->next;
-    
+
     // memset((void *)r, 0x0, PGSIZE);
     // return (void *)r;
     return alloc_page();
@@ -151,7 +151,7 @@ void *kalloc() {
 void kfree(void *addr) {
     // struct run *r;
 
-    // // PGSIZE align 
+    // // PGSIZE align
     // *(uintptr_t *)&addr = (uintptr_t)addr & ~(PGSIZE - 1);
 
     // memset(addr, 0x0, (uint64_t)PGSIZE);

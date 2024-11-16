@@ -14,7 +14,7 @@ void kfree(void *);
 
 struct buddy {
   uint64_t size;
-  uint64_t *bitmap; 
+  uint64_t *bitmap;
 };
 
 void buddy_init();

@@ -3,12 +3,16 @@
 #include "proc.h"
 #include "stdlib.h"
 #include "printk.h"
+#include "string.h"
+#include "vm.h"
 
 #define print_task(action, task) \
     printk(action " [PID = %d PRIORITY = %d COUNTER = %d]\n", \
         task->pid, task->priority, task->counter);
 
 extern void __dummy();
+extern uint64_t swapper_pg_dir[];
+extern uint64_t _sramdisk, _eramdisk;
 
 struct task_struct *idle;           // idle process
 struct task_struct *current;        // 指向当前运行线程的 task_struct
@@ -119,6 +123,23 @@ void task_init()
         task[i]->thread.ra = (uint64_t)__dummy;
         //     - sp 设置为该线程申请的物理页的高地址
         task[i]->thread.sp = (uint64_t)task[i] + PGSIZE;
+        // 将 sepc 设置为 USER_START
+        task[i]->thread.sepc = USER_START;
+        // 配置 sstatus 中的 SPP（使得 sret 返回至 U-Mode）、SPIE（sret 之后开启中断）、SUM（S-Mode 可以访问 User 页面）
+        task[i]->thread.sstatus = ~SPP | SPIE | SUM;
+        // 将 sscratch 设置为 U-Mode 的 sp，其值为 USER_END（将用户态栈放置在 user space 的最后一个页面）
+        task[i]->thread.sscratch = USER_END;
+        // 为了避免 U-Mode 和 S-Mode 切换的时候切换页表，我们将内核页表 swapper_pg_dir 复制到每个进程的页表中
+        task[i]->pgd = (uint64_t *)alloc_page();
+        memcpy(task[i]->pgd, swapper_pg_dir, PGSIZE);
+        // 二进制文件需要先被拷贝到一块新的、供某个进程专用的内存之后再进行映射，来防止所有的进程共享数据，造成预期外的进程间相互影响。
+        uint64_t *binary = (uint64_t *)alloc_pages((_eramdisk - _sramdisk) / PGSIZE + 1);
+        memcpy(binary, (void *)_sramdisk, _eramdisk - _sramdisk);
+        // 将 uapp 所在的页面映射到每个进行的页表中
+        create_mapping(task[i]->pgd, USER_START, (uint64_t)binary, _eramdisk - _sramdisk, PTE_R | PTE_W | PTE_X | PTE_V);
+        // 用户态栈：我们可以申请一个空的页面来作为用户态栈，并映射到进程的页表中
+        uint64_t *user_stack = (uint64_t *)alloc_page();
+        create_mapping(task[i]->pgd, USER_END - PGSIZE, (uint64_t)user_stack, PGSIZE, PTE_R | PTE_W | PTE_V);
 #ifdef DEBUG
         print_task("SET", task[i]);
 #endif

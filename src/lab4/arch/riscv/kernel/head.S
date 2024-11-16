@@ -13,7 +13,7 @@ _start:
 
     call setup_vm
     call relocate
-    
+
     call mm_init
     call task_init
 

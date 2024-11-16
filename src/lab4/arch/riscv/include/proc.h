@@ -3,11 +3,7 @@
 
 #include "stdint.h"
 
-#if TEST_SCHED
-#define NR_TASKS (1 + 4)    // 测试时线程数量
-#else
-#define NR_TASKS (1 + 31)   // 用于控制最大线程数量（idle 线程 + 31 内核线程）
-#endif
+#define NR_TASKS 4
 
 #define FIRST_TASK task[0]
 #define LAST_TASK task[NR_TASKS-1]
@@ -22,6 +18,7 @@ struct thread_struct {
     uint64_t ra;
     uint64_t sp;
     uint64_t s[12];
+    uint64_t sepc, sstatus, sscratch;
 };
 
 /* 线程数据结构 */
@@ -32,6 +29,7 @@ struct task_struct {
     uint64_t pid;       // 线程 id
 
     struct thread_struct thread;
+    uint64_t *pgd;
 };
 
 /* 线程初始化，创建 NR_TASKS 个线程 */
