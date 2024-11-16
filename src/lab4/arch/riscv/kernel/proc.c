@@ -12,7 +12,7 @@
 
 extern void __dummy();
 extern uint64_t swapper_pg_dir[];
-extern uint64_t _sramdisk[], _eramdisk[];
+extern char _sramdisk[], _eramdisk[];
 
 struct task_struct *idle;           // idle process
 struct task_struct *current;        // 指向当前运行线程的 task_struct
@@ -33,20 +33,20 @@ void switch_to(struct task_struct *next)
     current = next;
     print_task("SWITCH TO", next);
 #ifdef DEBUG
-    // printk("prev task info:\n");
-    // printk("ra: %p\n", prev->thread.ra);
-    // printk("sp: %p\n", prev->thread.sp);
-    // printk("sepc: %p\n", prev->thread.sepc);
-    // printk("sstatus: %p\n", prev->thread.sstatus);
-    // printk("sscratch: %p\n", prev->thread.sscratch);
-    // printk("pgd: %p\n", prev->pgd);
-    // printk("next task info:\n");
-    // printk("ra: %p\n", next->thread.ra);
-    // printk("sp: %p\n", next->thread.sp);
-    // printk("sepc: %p\n", next->thread.sepc);
-    // printk("sstatus: %p\n", next->thread.sstatus);
-    // printk("sscratch: %p\n", next->thread.sscratch);
-    // printk("pgd: %p\n", next->pgd);
+    printk("prev task info:\n");
+    printk("ra: %p\n", prev->thread.ra);
+    printk("sp: %p\n", prev->thread.sp);
+    printk("sepc: %p\n", prev->thread.sepc);
+    printk("sstatus: %p\n", prev->thread.sstatus);
+    printk("sscratch: %p\n", prev->thread.sscratch);
+    printk("pgd: %p\n", prev->pgd);
+    printk("next task info:\n");
+    printk("ra: %p\n", next->thread.ra);
+    printk("sp: %p\n", next->thread.sp);
+    printk("sepc: %p\n", next->thread.sepc);
+    printk("sstatus: %p\n", next->thread.sstatus);
+    printk("sscratch: %p\n", next->thread.sscratch);
+    printk("pgd: %p\n", next->pgd);
 #endif
     __switch_to(prev, next);
 }
@@ -144,15 +144,17 @@ void task_init()
         // 将 sepc 设置为 USER_START
         task[i]->thread.sepc = USER_START;
         // 配置 sstatus 中的 SPP（使得 sret 返回至 U-Mode）、SPIE（sret 之后开启中断）、SUM（S-Mode 可以访问 User 页面）
-        task[i]->thread.sstatus = SPP | SPIE | SUM;
+        task[i]->thread.sstatus = SPIE | SUM;
         // 将 sscratch 设置为 U-Mode 的 sp，其值为 USER_END（将用户态栈放置在 user space 的最后一个页面）
         task[i]->thread.sscratch = USER_END;
         // 为了避免 U-Mode 和 S-Mode 切换的时候切换页表，我们将内核页表 swapper_pg_dir 复制到每个进程的页表中
         task[i]->pgd = sv39_pg_dir_dup(swapper_pg_dir);
         // 二进制文件需要先被拷贝到一块新的、供某个进程专用的内存之后再进行映射，来防止所有的进程共享数据，造成预期外的进程间相互影响。
         // debug
+#ifdef DEBUG
         printk("sramdisk: %p, eramdisk: %p\n", _sramdisk, _eramdisk);
-        printk("%d\n", (_eramdisk - _sramdisk) / PGSIZE + 1);
+        printk("%p\n", (_eramdisk - _sramdisk) _+ 1);
+#endif
         uint64_t *binary = (uint64_t *)alloc_pages((_eramdisk - _sramdisk) / PGSIZE + 1);
         memcpy(binary, (void *)_sramdisk, _eramdisk - _sramdisk);
         // 将 uapp 所在的页面映射到每个进行的页表中
