@@ -15,14 +15,13 @@ _start:
     call relocate
 
     call mm_init
+
+    call setup_vm_final
+    call task_init
+
     # set stvec = _traps
     la t0, _traps
     csrw stvec, t0 # csrrw x0, stvec, t0: stvec -> x0, t0 -> stvec
-    call task_init
-
-    call setup_vm_final
-
-
 
     # set sie[STIE] = 1
     li t0, 0x00000020 # bit 5

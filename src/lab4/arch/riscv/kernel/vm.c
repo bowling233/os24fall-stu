@@ -131,3 +131,37 @@ void create_mapping(uint64_t *pgtbl, uint64_t va, uint64_t pa, uint64_t sz, uint
         vpn1 = 0;
     }
 }
+
+uint64_t * sv39_pg_dir_dup(uint64_t *pgtbl)
+{
+    uint64_t *new_pgtbl = (uint64_t *)alloc_page();
+    memset(new_pgtbl, 0x0, PGSIZE);
+    for (uint64_t vpn2 = 0; vpn2 < 512; vpn2++)
+    {
+        if (PTE_IS_VALID(pgtbl[vpn2]))
+        {
+            new_pgtbl[vpn2] = VA2PTE((uint64_t)alloc_page()) | PTE_V;
+            uint64_t *new_pgtbl1 = (uint64_t *)PTE2VA(new_pgtbl[vpn2]);
+            memset(new_pgtbl1, 0x0, PGSIZE);
+            uint64_t *pgtbl1 = (uint64_t *)PTE2VA(pgtbl[vpn2]);
+            for (uint64_t vpn1 = 0; vpn1 < 512; vpn1++)
+            {
+                if (PTE_IS_VALID(pgtbl1[vpn1]))
+                {
+                    new_pgtbl1[vpn1] = VA2PTE((uint64_t)alloc_page()) | PTE_V;
+                    uint64_t *new_pgtbl0 = (uint64_t *)PTE2VA(new_pgtbl1[vpn1]);
+                    memset(new_pgtbl0, 0x0, PGSIZE);
+                    uint64_t *pgtbl0 = (uint64_t *)PTE2VA(pgtbl1[vpn1]);
+                    for (uint64_t vpn0 = 0; vpn0 < 512; vpn0++)
+                    {
+                        if (PTE_IS_VALID(pgtbl0[vpn0]))
+                        {
+                            new_pgtbl0[vpn0] = pgtbl0[vpn0];
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return new_pgtbl;
+}

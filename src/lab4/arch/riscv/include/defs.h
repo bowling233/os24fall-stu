@@ -48,6 +48,7 @@
 #define PTE_R (1 << 1)
 #define PTE_W (1 << 2)
 #define PTE_X (1 << 3)
+#define PTE_U (1 << 4)
 #define VPN0(vpn) ((vpn) << 12)
 #define VPN1(vpn) ((vpn) << 21)
 #define VPN2(vpn) ((vpn) << 30)

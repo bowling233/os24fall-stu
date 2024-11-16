@@ -22,7 +22,9 @@ extern void __switch_to(struct task_struct *prev, struct task_struct *next);
 
 void switch_to(struct task_struct *next)
 {
-    //Log("switch_to");
+#ifdef DEBUG
+    Log("switch_to");
+#endif
     if (current == next)
     {
         return;
@@ -30,6 +32,22 @@ void switch_to(struct task_struct *next)
     struct task_struct *prev = current;
     current = next;
     print_task("SWITCH TO", next);
+#ifdef DEBUG
+    // printk("prev task info:\n");
+    // printk("ra: %p\n", prev->thread.ra);
+    // printk("sp: %p\n", prev->thread.sp);
+    // printk("sepc: %p\n", prev->thread.sepc);
+    // printk("sstatus: %p\n", prev->thread.sstatus);
+    // printk("sscratch: %p\n", prev->thread.sscratch);
+    // printk("pgd: %p\n", prev->pgd);
+    // printk("next task info:\n");
+    // printk("ra: %p\n", next->thread.ra);
+    // printk("sp: %p\n", next->thread.sp);
+    // printk("sepc: %p\n", next->thread.sepc);
+    // printk("sstatus: %p\n", next->thread.sstatus);
+    // printk("sscratch: %p\n", next->thread.sscratch);
+    // printk("pgd: %p\n", next->pgd);
+#endif
     __switch_to(prev, next);
 }
 
@@ -126,12 +144,11 @@ void task_init()
         // 将 sepc 设置为 USER_START
         task[i]->thread.sepc = USER_START;
         // 配置 sstatus 中的 SPP（使得 sret 返回至 U-Mode）、SPIE（sret 之后开启中断）、SUM（S-Mode 可以访问 User 页面）
-        task[i]->thread.sstatus = ~SPP | SPIE | SUM;
+        task[i]->thread.sstatus = SPP | SPIE | SUM;
         // 将 sscratch 设置为 U-Mode 的 sp，其值为 USER_END（将用户态栈放置在 user space 的最后一个页面）
         task[i]->thread.sscratch = USER_END;
         // 为了避免 U-Mode 和 S-Mode 切换的时候切换页表，我们将内核页表 swapper_pg_dir 复制到每个进程的页表中
-        task[i]->pgd = (uint64_t *)alloc_page();
-        memcpy(task[i]->pgd, swapper_pg_dir, PGSIZE);
+        task[i]->pgd = sv39_pg_dir_dup(swapper_pg_dir);
         // 二进制文件需要先被拷贝到一块新的、供某个进程专用的内存之后再进行映射，来防止所有的进程共享数据，造成预期外的进程间相互影响。
         // debug
         printk("sramdisk: %p, eramdisk: %p\n", _sramdisk, _eramdisk);
@@ -139,10 +156,10 @@ void task_init()
         uint64_t *binary = (uint64_t *)alloc_pages((_eramdisk - _sramdisk) / PGSIZE + 1);
         memcpy(binary, (void *)_sramdisk, _eramdisk - _sramdisk);
         // 将 uapp 所在的页面映射到每个进行的页表中
-        create_mapping(task[i]->pgd, USER_START, (uint64_t)binary, _eramdisk - _sramdisk, PTE_R | PTE_W | PTE_X | PTE_V);
+        create_mapping(task[i]->pgd, USER_START, VA2PA((uint64_t)binary), _eramdisk - _sramdisk, PTE_R | PTE_W | PTE_X | PTE_V | PTE_U);
         // 用户态栈：我们可以申请一个空的页面来作为用户态栈，并映射到进程的页表中
         uint64_t *user_stack = (uint64_t *)alloc_page();
-        create_mapping(task[i]->pgd, USER_END - PGSIZE, (uint64_t)user_stack, PGSIZE, PTE_R | PTE_W | PTE_V);
+        create_mapping(task[i]->pgd, USER_END - PGSIZE, VA2PA((uint64_t)user_stack), PGSIZE, PTE_R | PTE_W | PTE_V | PTE_U);
 #ifdef DEBUG
         print_task("SET", task[i]);
 #endif

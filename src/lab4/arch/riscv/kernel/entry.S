@@ -1,4 +1,27 @@
 .altmacro
+#define PHY_START 0x0000000080000000
+#define VM_START (0xffffffe000000000)
+#define PA2VA_OFFSET (VM_START - PHY_START)
+#define SATP_SV39 (8L << 60)
+.macro va_to_satp # va is in t0
+    li t1, PA2VA_OFFSET
+    sub t0, t0, t1 # va -> pa
+    srl t0, t0, 12 # pa -> ppn
+    li t1, 0xfffffffffff
+    and t0, t0, t1 # ppn mask
+    li t1, SATP_SV39 # sv39
+    or t0, t0, t1
+    csrw satp, t0
+.endm
+
+.macro satp_to_va
+    csrr t0, satp
+    li t1, 0xfffffffffff
+    and t0, t0, t1 # ppn mask
+    sll t0, t0, 12 # ppn -> pa
+    li t1, PA2VA_OFFSET
+    add t0, t0, t1 # pa -> va
+.endm
 .extern trap_handler
     .section .text.entry
     .align 2
@@ -132,8 +155,8 @@ __switch_to:
     sd t0, 152(a0) # a0->sstatus = sstatus
     csrr t0, sscratch
     sd t0, 160(a0) # a0->sscratch = sscratch
-    csrr t0, satp
-    sd t0, 168(a0) # a0->satp = satp
+    satp_to_va
+    sd t0, 168(a0) # a0->pgd = pgd
 
     # restore state from next process
     ld ra, 32(a1) # ra = a1->ra
@@ -147,8 +170,8 @@ __switch_to:
     csrw sstatus, t0
     ld t0, 160(a1) # sscratch = a1->sscratch
     csrw sscratch, t0
-    ld t0, 168(a1) # satp = a1->satp
-    csrw satp, t0
+    ld t0, 168(a1) # t0 = a1->pgd
+    va_to_satp
     sfence.vma
     fence.i
 
