@@ -50,8 +50,8 @@ _start:
 #endif
 
     # set sstatus[SIE] = 1
-    li t0, 0x00000002 # bit 1
-    csrs sstatus, t0 # csrrs x0, sstatus, t0: sstatus -> x0, x0 | t0 -> sstatus
+    # li t0, 0x00000002 # bit 1
+    # csrs sstatus, t0 # csrrs x0, sstatus, t0: sstatus -> x0, x0 | t0 -> sstatus
 
     call start_kernel
 
