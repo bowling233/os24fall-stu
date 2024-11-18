@@ -34,20 +34,20 @@ void switch_to(struct task_struct *next)
     current = next;
     print_task("SWITCH TO", next);
 #ifdef DEBUG
-    printk("prev task info:\n");
-    printk("ra: %p\n", prev->thread.ra);
-    printk("sp: %p\n", prev->thread.sp);
-    printk("sepc: %p\n", prev->thread.sepc);
-    printk("sstatus: %p\n", prev->thread.sstatus);
-    printk("sscratch: %p\n", prev->thread.sscratch);
-    printk("pgd: %p\n", prev->pgd);
-    printk("next task info:\n");
-    printk("ra: %p\n", next->thread.ra);
-    printk("sp: %p\n", next->thread.sp);
-    printk("sepc: %p\n", next->thread.sepc);
-    printk("sstatus: %p\n", next->thread.sstatus);
-    printk("sscratch: %p\n", next->thread.sscratch);
-    printk("pgd: %p\n", next->pgd);
+    // printk("prev task info:\n");
+    // printk("ra: %p\n", prev->thread.ra);
+    // printk("sp: %p\n", prev->thread.sp);
+    // printk("sepc: %p\n", prev->thread.sepc);
+    // printk("sstatus: %p\n", prev->thread.sstatus);
+    // printk("sscratch: %p\n", prev->thread.sscratch);
+    // printk("pgd: %p\n", prev->pgd);
+    // printk("next task info:\n");
+    // printk("ra: %p\n", next->thread.ra);
+    // printk("sp: %p\n", next->thread.sp);
+    // printk("sepc: %p\n", next->thread.sepc);
+    // printk("sstatus: %p\n", next->thread.sstatus);
+    // printk("sscratch: %p\n", next->thread.sscratch);
+    // printk("pgd: %p\n", next->pgd);
 #endif
     __switch_to(prev, next);
 }
@@ -180,26 +180,25 @@ void task_init()
         // 二进制文件需要先被拷贝到一块新的、供某个进程专用的内存之后再进行映射，来防止所有的进程共享数据，造成预期外的进程间相互影响。
         // debug
 #ifdef DEBUG
-        printk("sramdisk: %p, eramdisk: %p\n", _sramdisk, _eramdisk);
-        printk("%p\n", (_eramdisk - _sramdisk) / PGSIZE + 1);
+        Log("sramdisk: %p, eramdisk: %p", _sramdisk, _eramdisk);
 #endif
         // test if _sramdisk is elf file
         Elf64_Ehdr *ehdr = (Elf64_Ehdr *)_sramdisk;
         if (ehdr->e_ident[EI_MAG0] == ELFMAG0 && ehdr->e_ident[EI_MAG1] == ELFMAG1 && ehdr->e_ident[EI_MAG2] == ELFMAG2 && ehdr->e_ident[EI_MAG3] == ELFMAG3)
         {
 #ifdef DEBUG
-            printk("load program\n");
+            Log("load ELF program");
 #endif
             load_program(task[i]);
             task[i]->thread.sepc = ehdr->e_entry;
 #ifdef DEBUG
-            printk("e_entry: %p\n", ehdr->e_entry);
+            Log("e_entry: %p", ehdr->e_entry);
 #endif
         }
         else
         {
 #ifdef DEBUG
-            printk("load binary\n");
+            Log("load binary");
 #endif
             uint64_t binary = (uint64_t)alloc_pages((_eramdisk - _sramdisk) / PGSIZE + 1);
             memcpy((void *)binary, (void *)_sramdisk, _eramdisk - _sramdisk);
@@ -209,7 +208,7 @@ void task_init()
             task[i]->thread.sepc = USER_START;
         }
 #ifdef DEBUG
-        printk("load done\n");
+        Log("load done");
 #endif
         // 用户态栈：我们可以申请一个空的页面来作为用户态栈，并映射到进程的页表中
         uint64_t *user_stack = (uint64_t *)alloc_page();

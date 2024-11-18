@@ -93,7 +93,7 @@ void setup_vm_final(void)
 void create_mapping(uint64_t *pgtbl, uint64_t va, uint64_t pa, uint64_t sz, uint64_t perm)
 {
 #ifdef DEBUG
-    printk("create_mapping: va %lx pa %lx sz %lx perm %lx\n", va, pa, sz, perm);
+    Log("va %lx pa %lx sz %lx perm %lx", va, pa, sz, perm);
 #endif
     if (sz == 0)
     {

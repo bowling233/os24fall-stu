@@ -103,25 +103,22 @@ void trap_handler(uint64_t scause, uint64_t sepc, struct pt_regs *regs)
         do_timer();
         break;
     case 0x0000000000000008:
-#ifdef DEBUG
-        printk("systemcall: ");
-#endif
         switch (regs->x[16]) // syscall a7 -> x17 -> x[16]
         {
         case __NR_write:
 #ifdef DEBUG
-            printk("write: fd = %d, buf = %p, count = %d\n", regs->x[10], regs->x[11], regs->x[12]);
+            Log("syscall write: fd = %d, buf = %p, count = %d", regs->x[10], regs->x[11], regs->x[12]);
 #endif
             regs->x[9] = sys_write(regs->x[9], (void *)regs->x[10], regs->x[11]);
             break;
         case __NR_getpid:
 #ifdef DEBUG
-            printk("getpid\n");
+            Log("syscall getpid");
 #endif
             regs->x[9] = sys_getpid();
             break;
         default:
-            printk(RED "Unimplemented system call: %d\n" CLEAR, regs->x[16]);
+            Log(RED "Unimplemented system call: %d" CLEAR, regs->x[16]);
             break;
         }
         // 针对系统调用这一类异常，我们需要手动完成 sepc + 4
