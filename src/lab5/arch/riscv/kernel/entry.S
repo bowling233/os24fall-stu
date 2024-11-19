@@ -29,10 +29,9 @@
 _traps:
     # 进入 trap 的时候需要切换到内核栈
     # 如果是内核线程（没有用户栈）触发了异常，则不需要进行切换。（内核线程的 sp 永远指向的内核栈，且 sscratch 为 0）
-    csrr t0, sscratch
-    beqz t0, 1f
-    csrw sscratch, sp
-    mv sp, t0
+    csrrw sp, sscratch, sp
+    bnez sp, 1f // sp is zero means sscratch is zero, so switch back
+    csrrw sp, sscratch, sp
 1:
 
     # 1. save 32 registers and sepc to stack
@@ -119,10 +118,9 @@ _traps:
 
     # 处理完成后需要再切换回来
     # 如果是内核线程（没有用户栈）触发了异常，则不需要进行切换。
-    csrr t0, sscratch
-    beqz t0, 2f
-    csrw sscratch, sp
-    mv sp, t0
+    csrrw sp, sscratch, sp
+    bnez sp, 2f // sp is zero means sscratch is zero, so switch back
+    csrrw sp, sscratch, sp
 2:
 
     # 4. return from trap
@@ -138,9 +136,7 @@ __dummy:
     # ld t0, 144(t0) # sepc
     # csrw sepc, t0
     # 在 __dummy 进入用户态模式的时候，我们需要切换这两个栈
-    mv t0, sp
-    csrr sp, sscratch
-    csrw sscratch, t0
+    csrrw sp, sscratch, sp
     sret
 
     .globl __switch_to
