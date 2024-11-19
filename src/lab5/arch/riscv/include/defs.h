@@ -79,4 +79,10 @@
 #define SPIE (1L << 5)
 #define SUM (1L << 18)
 
+// lab5
+#define VM_ANON 0x1
+#define VM_READ 0x2
+#define VM_WRITE 0x4
+#define VM_EXEC 0x8
+
 #endif

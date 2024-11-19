@@ -114,18 +114,19 @@ void load_program(struct task_struct *task)
         if (phdr->p_type == PT_LOAD)
         {
             // alloc space and copy content
-            uint64_t begin = PGROUNDDOWN(phdr->p_vaddr), end = PGROUNDUP(phdr->p_vaddr + phdr->p_memsz);
-            void *binary = (void *)alloc_pages((end - begin) / PGSIZE);
-            if ((end - begin) % PGSIZE != 0)
-            {
-                printk(RED "end - begin: %p\n" CLEAR, end - begin);
-            }
-            memcpy((char *)binary + phdr->p_vaddr - begin, (void *)ehdr + phdr->p_offset, phdr->p_filesz);
-            memset((char *)binary + phdr->p_vaddr - begin + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
             // do mapping
             // 它需要被分配到以 p_vaddr 为首地址的虚拟内存位置，在内存中它占用大小为 p_memsz。
-            uint64_t perm = (phdr->p_flags & PF_X ? PTE_X : 0) | (phdr->p_flags & PF_W ? PTE_W : 0) | (phdr->p_flags & PF_R ? PTE_R : 0) | PTE_V | PTE_U;
-            create_mapping(task->pgd, phdr->p_vaddr, VA2PA((uint64_t)binary), end - begin, perm);
+#ifdef DEBUG
+    Log("PF_X: %d PF_W: %d PF_R: %d", phdr->p_flags & PF_X, phdr->p_flags & PF_W, phdr->p_flags & PF_R);
+#endif
+            uint64_t vma_flags = ((phdr->p_flags & PF_X) ? VM_EXEC : 0) | ((phdr->p_flags & PF_W) ? VM_WRITE : 0) | ((phdr->p_flags & PF_R) ? VM_READ : 0);
+            uint64_t vma_start = PGROUNDDOWN(phdr->p_vaddr);
+            uint64_t vma_start_offset = phdr->p_vaddr - vma_start;
+            uint64_t vma_end = PGROUNDUP(phdr->p_vaddr + phdr->p_memsz);
+            uint64_t vma_pgoff = phdr->p_offset - vma_start_offset;
+            uint64_t vma_filesz = phdr->p_filesz + vma_start_offset;
+            uint64_t vma_sz = vma_end - vma_start;
+            do_mmap(&task->mm, vma_start, vma_sz, vma_pgoff, vma_filesz, vma_flags);
             // code...
         }
     }
@@ -178,11 +179,6 @@ void task_init()
         // 为了避免 U-Mode 和 S-Mode 切换的时候切换页表，我们将内核页表 swapper_pg_dir 复制到每个进程的页表中
         task[i]->pgd = sv39_pg_dir_dup(swapper_pg_dir);
         // 二进制文件需要先被拷贝到一块新的、供某个进程专用的内存之后再进行映射，来防止所有的进程共享数据，造成预期外的进程间相互影响。
-        // debug
-#ifdef DEBUG
-        printk("sramdisk: %p, eramdisk: %p\n", _sramdisk, _eramdisk);
-        printk("%p\n", (_eramdisk - _sramdisk) / PGSIZE + 1);
-#endif
         // test if _sramdisk is elf file
         Elf64_Ehdr *ehdr = (Elf64_Ehdr *)_sramdisk;
         if (ehdr->e_ident[EI_MAG0] == ELFMAG0 && ehdr->e_ident[EI_MAG1] == ELFMAG1 && ehdr->e_ident[EI_MAG2] == ELFMAG2 && ehdr->e_ident[EI_MAG3] == ELFMAG3)
@@ -201,10 +197,7 @@ void task_init()
 #ifdef DEBUG
             printk("load binary\n");
 #endif
-            uint64_t binary = (uint64_t)alloc_pages((_eramdisk - _sramdisk) / PGSIZE + 1);
-            memcpy((void *)binary, (void *)_sramdisk, _eramdisk - _sramdisk);
-            // 将 uapp 所在的页面映射到每个进行的页表中
-            create_mapping(task[i]->pgd, USER_START, VA2PA(binary), _eramdisk - _sramdisk, PTE_R | PTE_W | PTE_X | PTE_V | PTE_U);
+            do_mmap(&task[i]->mm, (uint64_t)_sramdisk, (uint64_t)_eramdisk - (uint64_t)_sramdisk, 0, 0, VM_READ | VM_WRITE | VM_EXEC); // to be checked
             // 将 sepc 设置为 USER_START
             task[i]->thread.sepc = USER_START;
         }
@@ -212,15 +205,13 @@ void task_init()
         printk("load done\n");
 #endif
         // 用户态栈：我们可以申请一个空的页面来作为用户态栈，并映射到进程的页表中
-        uint64_t *user_stack = (uint64_t *)alloc_page();
-        create_mapping(task[i]->pgd, USER_END - PGSIZE, VA2PA((uint64_t)user_stack), PGSIZE, PTE_R | PTE_W | PTE_V | PTE_U);
+        do_mmap(&task[i]->mm, USER_END - PGSIZE, PGSIZE, 0, 0, VM_READ | VM_WRITE | VM_ANON);
 #ifdef DEBUG
         print_task("SET", task[i]);
 #endif
     }
 
     /* YOUR CODE HERE */
-
     printk("...task_init done!\n");
 }
 

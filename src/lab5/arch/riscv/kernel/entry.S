@@ -77,6 +77,7 @@ _traps:
 
     csrr a0, scause
     mv a2, sp
+    csrr a3, stval
     call trap_handler
 
     # 3. restore sepc and 32 registers (x2(sp) should be restore last) from stack

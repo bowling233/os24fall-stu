@@ -168,3 +168,72 @@ uint64_t * sv39_pg_dir_dup(uint64_t *pgtbl)
     }
     return new_pgtbl;
 }
+
+struct vm_area_struct *find_vma(struct mm_struct *mm, uint64_t addr)
+{
+    struct vm_area_struct *vma = mm->mmap;
+    while (vma != NULL)
+    {
+        if (addr >= vma->vm_start && addr < vma->vm_end)
+        {
+            return vma;
+        }
+        vma = vma->vm_next;
+    }
+    return NULL;
+}
+
+uint64_t do_mmap(struct mm_struct *mm, uint64_t addr, uint64_t len, uint64_t vm_pgoff, uint64_t vm_filesz, uint64_t flags)
+{
+#ifdef DEBUG
+    Log("addr %lx len %lx vm_pgoff %lx vm_filesz %lx flags %lx", addr, len, vm_pgoff, vm_filesz, flags);
+#endif
+    // vma is page aligned
+    // uint64_t start = PGROUNDDOWN(addr);
+    // uint64_t end = PGROUNDUP(addr + len);
+    // len = end - start;
+    // uint64_t start_off = addr - start;
+    // vm_pgoff -= start_off;
+    // vm_filesz += start_off;
+
+    struct vm_area_struct *vma = mm->mmap;
+    struct vm_area_struct *prev = NULL;
+    while (vma != NULL)
+    {
+        if (addr + len > vma->vm_start && addr < vma->vm_end)
+        {
+            // 请求的内存区域包含于已有的 VMA 中
+            return -1;
+        }
+        if (addr < vma->vm_start)
+        {
+            // 请求的内存区域的起始地址位于已有的 VMA 之前
+            break;
+        }
+        prev = vma;
+        vma = vma->vm_next;
+    }
+    struct vm_area_struct *new_vma = (struct vm_area_struct *)kalloc();
+    new_vma->vm_mm = mm;
+    new_vma->vm_start = addr;
+    new_vma->vm_end = addr + len;
+    new_vma->vm_next = vma;
+    new_vma->vm_prev = prev;
+    new_vma->vm_flags = flags;
+    new_vma->vm_pgoff = vm_pgoff;
+    new_vma->vm_filesz = vm_filesz;
+    if (prev != NULL)
+    {
+        prev->vm_next = new_vma;
+    }
+    else
+    {
+        mm->mmap = new_vma;
+    }
+    if (vma != NULL)
+    {
+        vma->vm_prev = new_vma;
+    }
+    return addr;
+}
+
