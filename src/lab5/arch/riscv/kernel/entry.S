@@ -39,7 +39,7 @@ _traps:
     addi sp, sp, -8*32 # only need 31, but risc-v requires 16-byte alignment for sp
     # no need to save x0
     sd x1, 0(sp)
-    # no need to save x2(sp)
+    sd x2, 8(sp)
     sd x3, 16(sp)
     sd x4, 24(sp)
     sd x5, 32(sp)
@@ -79,6 +79,9 @@ _traps:
     csrr a3, stval
     call trap_handler
 
+    .globl __ret_from_fork
+__ret_from_fork:
+
     # 3. restore sepc and 32 registers (x2(sp) should be restore last) from stack
 
     ld a1, 248(sp) # sepc
@@ -114,6 +117,7 @@ _traps:
     ld x29, 224(sp)
     ld x30, 232(sp)
     ld x31, 240(sp)
+    ld sp, 8(sp) # x2(sp)
     addi sp, sp, 8*32
 
     # 处理完成后需要再切换回来

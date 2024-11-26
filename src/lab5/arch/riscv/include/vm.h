@@ -21,6 +21,7 @@ struct vm_area_struct
 void create_mapping(uint64_t *pgtbl, uint64_t va, uint64_t pa, uint64_t sz, uint64_t perm);
 void setup_vm_final(void);
 uint64_t *sv39_pg_dir_dup(uint64_t *pgtbl);
+uint64_t find_pte(uint64_t*pgtbl, uint64_t va);
 
 /*
  * @mm       : current thread's mm_struct

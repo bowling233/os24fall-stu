@@ -7,9 +7,8 @@
 #include "defs.h"
 #include "string.h"
 
-extern struct task_struct *current;
-extern char _sramdisk[];
 void clock_set_next_event();
+extern char __ret_from_fork[];
 
 struct pt_regs
 {
@@ -18,7 +17,67 @@ struct pt_regs
     // where is sstatus?
 };
 
-void do_page_fault(struct pt_regs *regs, uint64_t stval, uint64_t scause) {
+uint64_t do_fork(struct pt_regs *regs)
+{
+    uint64_t new_pid = ++nr_tasks;
+#ifdef DEBUG
+    Log("new_pid: %lx", new_pid);
+#endif
+    // 将新进程加入调度队列
+    struct task_struct *new_task = task[new_pid] = (struct task_struct *)alloc_page();
+    memcpy(new_task, current, PGSIZE);
+    new_task->pid = new_pid;
+    new_task->thread.ra = (uint64_t)__ret_from_fork;
+#ifdef DEBUG
+    Log("old_task sp = %lx, offset in page = %lx", regs->x[1], regs->x[1] - (uint64_t)current);
+    Log("new_task page = %lx", new_task);
+#endif
+    uint64_t regs_offest = (uint64_t)regs - (uint64_t)current;
+    new_task->thread.sp = ((uint64_t)new_task + regs_offest);
+    struct pt_regs *new_regs = (struct pt_regs*)new_task->thread.sp;
+    new_regs->x[9] = 0;
+    new_regs->sepc += 4;
+    new_task->thread.sscratch = csr_read(sscratch);
+    new_task->thread.sstatus = current->thread.sstatus;
+    new_task->mm.mmap = NULL;
+    // 拷贝内核页表 swapper_pg_dir
+    new_task->pgd = sv39_pg_dir_dup(swapper_pg_dir);
+    // 遍历父进程 vma，并遍历父进程页表
+    struct vm_area_struct *parent_vma = current->mm.mmap;
+    while (parent_vma)
+    {
+#ifdef DEBUG
+        Log("parent_vma: %lx %lx %lx %lx %lx", parent_vma->vm_start, parent_vma->vm_end, parent_vma->vm_pgoff, parent_vma->vm_filesz, parent_vma->vm_flags);
+#endif
+        // 将这个 vma 也添加到新进程的 vma 链表中
+        do_mmap(&new_task->mm, parent_vma->vm_start, parent_vma->vm_end - parent_vma->vm_start, parent_vma->vm_pgoff, parent_vma->vm_filesz, parent_vma->vm_flags);
+        for (uint64_t current_page = parent_vma->vm_start; current_page < parent_vma->vm_end; current_page += PGSIZE)
+        {
+#ifdef DEBUG
+            Log("current_page: %lx", current_page);
+#endif
+            uint64_t pte = find_pte(current->pgd, current_page);
+            if(pte)
+            {
+                void *page = alloc_page();
+#ifdef DEBUG
+                Log("page: %lx", page);
+#endif
+                memcpy(page, (void *)(PTE2VA(pte)), PGSIZE);
+                create_mapping(new_task->pgd, current_page, VA2PA((uint64_t)page), PGSIZE, pte & 0x3ff);
+            }
+        }
+        parent_vma = parent_vma->vm_next;
+    }
+    // 处理父子进程的返回值
+    // 父进程通过 do_fork 函数直接返回子进程的 pid，并回到自身运行
+    // ：这里通过在 trap_handler 中设置返回值实现
+    // 子进程通过被调度器调度后（跳到 thread.ra），开始执行并返回 0
+    return new_pid;
+}
+
+void do_page_fault(struct pt_regs *regs, uint64_t stval, uint64_t scause)
+{
 #ifdef DEBUG
     Log("stval: %lx", stval);
 #endif
@@ -32,29 +91,29 @@ void do_page_fault(struct pt_regs *regs, uint64_t stval, uint64_t scause) {
     }
     // 如果在，则根据 vma 的 flags 权限判断当前 page fault 是否合法
     // 如果非法（比如触发的是 instruction page fault 但 vma 权限不允许执行），则 Err 输出错误信息
-    switch(scause)
+    switch (scause)
     {
-        case 0x000000000000000C:
-            if (!(vma->vm_flags & VM_EXEC))
-            {
-                Err("instruction page fault at %lx, bad address %lx", regs->sepc, stval);
-            }
-            break;
-        case 0x000000000000000D:
-            if (!(vma->vm_flags & VM_READ))
-            {
-                Err("load page fault at %lx, bad address %lx", regs->sepc, stval);
-            }
-            break;
-        case 0x000000000000000F:
-            if (!(vma->vm_flags & VM_WRITE))
-            {
-                Err("store page fault at %lx, bad address %lx", regs->sepc, stval);
-            }
-            break;
-        default:
-            Err("unknown page fault at %lx, bad address %lx", regs->sepc, stval);
-            break;
+    case 0x000000000000000C:
+        if (!(vma->vm_flags & VM_EXEC))
+        {
+            Err("instruction page fault at %lx, bad address %lx", regs->sepc, stval);
+        }
+        break;
+    case 0x000000000000000D:
+        if (!(vma->vm_flags & VM_READ))
+        {
+            Err("load page fault at %lx, bad address %lx", regs->sepc, stval);
+        }
+        break;
+    case 0x000000000000000F:
+        if (!(vma->vm_flags & VM_WRITE))
+        {
+            Err("store page fault at %lx, bad address %lx", regs->sepc, stval);
+        }
+        break;
+    default:
+        Err("unknown page fault at %lx, bad address %lx", regs->sepc, stval);
+        break;
     }
 #ifdef DEBUG
     Log("vma flags: VM_READ %d VM_WRITE %d VM_EXEC %d VM_ANON %d", vma->vm_flags & VM_READ, vma->vm_flags & VM_WRITE, vma->vm_flags & VM_EXEC, vma->vm_flags & VM_ANON);
@@ -67,20 +126,20 @@ void do_page_fault(struct pt_regs *regs, uint64_t stval, uint64_t scause) {
     // 如果是匿名空间，则直接映射即可
     create_mapping(current->pgd, PGROUNDDOWN(stval), VA2PA((uint64_t)page), PGSIZE, perm);
     // 如果不是，则需要根据 vma->vm_pgoff 等信息从 ELF 中读取数据，填充后映射到用户空间
-    if(!(vma->vm_flags & VM_ANON))
+    if (!(vma->vm_flags & VM_ANON))
     {
         uint64_t target_offset = stval - vma->vm_start;
         uint64_t page_down_offset = PGROUNDDOWN(stval) - vma->vm_start;
         uint64_t page_up_offset = PGROUNDUP(stval) - vma->vm_start;
         if (page_down_offset >= vma->vm_filesz)
             memset(page, 0, PGSIZE);
-        else if(page_up_offset <= vma->vm_filesz)
+        else if (page_up_offset <= vma->vm_filesz)
             memcpy(page, _sramdisk + vma->vm_pgoff + page_down_offset, PGSIZE);
         else
         {
             uint64_t zero_size = page_up_offset - vma->vm_filesz;
             memcpy(page, _sramdisk + vma->vm_pgoff + page_down_offset, PGSIZE - (zero_size));
-            memset(page + vma->vm_filesz - page_down_offset, 0, PGSIZE - zero_size);
+            memset(page + vma->vm_filesz - page_down_offset, 0, zero_size);
         }
     }
 }
@@ -192,6 +251,12 @@ void trap_handler(uint64_t scause, uint64_t sepc, struct pt_regs *regs, uint64_t
             printk("getpid\n");
 #endif
             regs->x[9] = sys_getpid();
+            break;
+        case __NR_clone:
+#ifdef DEBUG
+            printk("clone\n");
+#endif
+            regs->x[9] = do_fork(regs);
             break;
         default:
             Err("Unimplemented system call: %d\n", regs->x[16]);

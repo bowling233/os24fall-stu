@@ -18,6 +18,7 @@ extern char _sramdisk[], _eramdisk[];
 struct task_struct *idle;           // idle process
 struct task_struct *current;        // 指向当前运行线程的 task_struct
 struct task_struct *task[NR_TASKS]; // 线程数组，所有的线程都保存在此
+uint64_t nr_tasks;
 
 extern void __switch_to(struct task_struct *prev, struct task_struct *next);
 
@@ -54,7 +55,6 @@ void switch_to(struct task_struct *next)
 
 void do_timer()
 {
-    // Log("do_timer");
     //  1. 如果当前线程是 idle 线程或当前线程时间片耗尽则直接进行调度
     if (!(current == idle || current->counter == 0))
     {
@@ -156,8 +156,10 @@ void task_init()
     print_task("SET", idle);
 #endif
 
+    nr_tasks = 1;
+
     // 1. 参考 idle 的设置，为 task[1] ~ task[NR_TASKS - 1] 进行初始化
-    for (int i = 1; i < NR_TASKS; i++)
+    for (int i = 1; i < 2; i++)
     {
         task[i] = (struct task_struct *)kalloc();
         // 2. 其中每个线程的 state 为 TASK_RUNNING, 此外，counter 和 priority 进行如下赋值：
