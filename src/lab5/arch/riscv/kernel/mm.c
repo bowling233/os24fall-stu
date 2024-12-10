@@ -45,6 +45,10 @@ void buddy_init() {
     free_page_start += 2 * buddy.size * sizeof(*buddy.bitmap);
     memset(buddy.bitmap, 0, 2 * buddy.size * sizeof(*buddy.bitmap));
 
+    buddy.ref_cnt = free_page_start;
+    free_page_start += buddy.size * sizeof(*buddy.ref_cnt);
+    memset(buddy.ref_cnt, 0, buddy.size * sizeof(*buddy.ref_cnt));
+
     uint64_t node_size = buddy.size * 2;
     for (uint64_t i = 0; i < 2 * buddy.size - 1; ++i) {
         if (IS_POWER_OF_2(i + 1))
@@ -61,6 +65,11 @@ void buddy_init() {
 }
 
 void buddy_free(uint64_t pfn) {
+    // if ref_cnt is not zero, do nothing
+    if (buddy.ref_cnt[pfn])
+    {
+        return;
+    }
     uint64_t node_size, index = 0;
     uint64_t left_longest, right_longest;
 
@@ -111,6 +120,7 @@ uint64_t buddy_alloc(uint64_t nrpages) {
 
     buddy.bitmap[index] = 0;
     pfn = (index + 1) * node_size - buddy.size;
+    buddy.ref_cnt[pfn] = 1;
 
     while (index) {
         index = PARENT(index);
@@ -121,6 +131,23 @@ uint64_t buddy_alloc(uint64_t nrpages) {
     return pfn;
 }
 
+void page_ref_inc(uint64_t pfn)
+{
+    buddy.ref_cnt[pfn]++;
+}
+
+void page_ref_dec(uint64_t pfn)
+{
+    if (buddy.ref_cnt[pfn] > 0)
+    {
+        buddy.ref_cnt[pfn]--;
+    }
+    if (buddy.ref_cnt[pfn] == 0)
+    {
+        Log("free page: %p", PFN2PHYS(pfn));
+        buddy_free(pfn);
+    }
+}
 
 void *alloc_pages(uint64_t nrpages) {
     uint64_t pfn = buddy_alloc(nrpages);
@@ -175,4 +202,28 @@ void mm_init(void) {
     // kfreerange(_ekernel, (char *)PHY_END+PA2VA_OFFSET);
     buddy_init();
     printk("...mm_init done!\n");
+}
+
+uint64_t get_page(void *va)
+{
+    uint64_t pfn = PHYS2PFN(VA2PA((uint64_t)va));
+    // check if the page is already allocated
+    if (buddy.ref_cnt[pfn] == 0)
+    {
+        return 1;
+    }
+    page_ref_inc(pfn);
+    return 0;
+}
+
+uint64_t get_page_refcnt(void *va)
+{
+    uint64_t pfn = PHYS2PFN(VA2PA((uint64_t)va));
+    return buddy.ref_cnt[pfn];
+}
+
+void put_page(void *va)
+{
+    uint64_t pfn = PHYS2PFN(VA2PA((uint64_t)va));
+    page_ref_dec(pfn);
 }

@@ -51,20 +51,17 @@ uint64_t do_fork(struct pt_regs *regs)
 #endif
         // 将这个 vma 也添加到新进程的 vma 链表中
         do_mmap(&new_task->mm, parent_vma->vm_start, parent_vma->vm_end - parent_vma->vm_start, parent_vma->vm_pgoff, parent_vma->vm_filesz, parent_vma->vm_flags);
-        for (uint64_t current_page = parent_vma->vm_start; current_page < parent_vma->vm_end; current_page += PGSIZE)
+        for (uint64_t parent_page = parent_vma->vm_start; parent_page < parent_vma->vm_end; parent_page += PGSIZE)
         {
 #ifdef DEBUG
-            Log("current_page: %lx", current_page);
+            Log("duplicating parent_page: %lx", parent_page);
 #endif
-            uint64_t pte = find_pte(current->pgd, current_page);
+            uint64_t pte = find_pte(current->pgd, parent_page);
             if(pte)
             {
-                void *page = alloc_page();
-#ifdef DEBUG
-                Log("page: %lx", page);
-#endif
-                memcpy(page, (void *)(PTE2VA(pte)), PGSIZE);
-                create_mapping(new_task->pgd, current_page, VA2PA((uint64_t)page), PGSIZE, pte & 0x3ff);
+                void *child_page = alloc_page();
+                memcpy(child_page, (void *)(PTE2VA(pte)), PGSIZE);
+                create_mapping(new_task->pgd, parent_page, VA2PA((uint64_t)child_page), PGSIZE, pte & 0x3ff);
             }
         }
         parent_vma = parent_vma->vm_next;
