@@ -94,6 +94,31 @@ int64_t sys_write(uint64_t fd, const char *buf, uint64_t len)
     return ret;
 }
 
+int64_t sys_read(uint64_t fd, char *buf, uint64_t len)
+{
+    int64_t ret;
+    struct file *file = &(current->files->fd_array[fd]);
+    if (file->opened == 0)
+    {
+        printk("file not opened\n");
+        return ERROR_FILE_NOT_OPEN;
+    }
+    else
+    {
+        // check perms and call read function of file
+        if (file->perms & FILE_READABLE)
+        {
+            ret = file->read(file, buf, len);
+        }
+        else
+        {
+            printk("file not readable\n");
+            return -1;
+        }
+    }
+    return ret;
+}
+
 void do_syscall(struct pt_regs *regs)
 {
 #ifdef DEBUG
@@ -106,6 +131,12 @@ void do_syscall(struct pt_regs *regs)
         printk("write: fd = %d, buf = %p, count = %d\n", regs->x[9], regs->x[10], regs->x[11]);
 #endif
         regs->x[9] = sys_write(regs->x[9], (const char *)regs->x[10], regs->x[11]);
+        break;
+    case SYS_READ:
+#ifdef DEBUG
+        printk("read: fd = %d, buf = %p, count = %d\n", regs->x[9], regs->x[10], regs->x[11]);
+#endif
+        regs->x[9] = sys_read(regs->x[9], (char *)regs->x[10], regs->x[11]);
         break;
     case SYS_GETPID:
 #ifdef DEBUG

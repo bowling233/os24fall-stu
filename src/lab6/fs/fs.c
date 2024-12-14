@@ -18,6 +18,7 @@ struct files_struct *file_init()
     // 为 stdin、stdout、stderr 赋值，比如 stdin 你可以：
     ret->fd_array[0].opened = 1;
     ret->fd_array[0].perms = FILE_READABLE;
+    ret->fd_array[0].read = stdin_read;
     ret->fd_array[1].opened = 1;
     ret->fd_array[1].perms = FILE_WRITABLE;
     ret->fd_array[1].write = stdout_write;
