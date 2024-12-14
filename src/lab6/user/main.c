@@ -87,7 +87,7 @@ void parse_cmd(char *cmd, int len) {
             cmd++;
         }
         char* temp = get_param(cmd);
-        int len = strlen(temp); 
+        int len = strlen(temp);
         char filename[len + 1];
         for (int i = 0; i < len; i++) {
             filename[i] = temp[i];

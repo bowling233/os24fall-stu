@@ -31,7 +31,7 @@ struct fat32_file {
 struct file {   // Opened file in a thread.
     uint32_t opened;
     uint32_t perms;
-    int64_t cfo;
+    int64_t cfo; // 当前文件指针偏移量
     uint32_t fs_type;
 
     union {

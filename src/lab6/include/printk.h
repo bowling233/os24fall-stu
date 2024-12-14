@@ -15,10 +15,13 @@
 #define DEEPGREEN "\033[36m"
 #define CLEAR "\033[0m"
 
+#if LOG
 #define Log(format, ...)                             \
     printk("\33[1;35m[%s:%d,%s] " format "\33[0m\n", \
            __FILE__, __LINE__, __func__, ##__VA_ARGS__)
-
+#else
+#define Log(format, ...);
+#endif
 int printk(const char *, ...);
 
 #define Err(format, ...) {                              \

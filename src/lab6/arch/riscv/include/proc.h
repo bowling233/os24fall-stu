@@ -36,7 +36,16 @@ struct task_struct
     struct thread_struct thread;
     uint64_t *pgd;
     struct mm_struct mm;
+    struct files_struct *files;
 };
+
+struct pt_regs
+{
+    uint64_t x[31]; // x1-x31
+    uint64_t sepc;
+    // where is sstatus?
+};
+extern char __ret_from_fork[];
 
 /* 线程初始化，创建 NR_TASKS 个线程 */
 void task_init();

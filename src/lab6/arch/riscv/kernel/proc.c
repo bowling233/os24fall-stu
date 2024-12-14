@@ -6,6 +6,7 @@
 #include "string.h"
 #include "vm.h"
 #include "elf.h"
+#include "fs.h"
 
 #define print_task(action, task)                              \
     printk(action " [PID = %d PRIORITY = %d COUNTER = %d]\n", \
@@ -208,6 +209,8 @@ void task_init()
 #endif
         // 用户态栈：我们可以申请一个空的页面来作为用户态栈，并映射到进程的页表中
         do_mmap(&task[i]->mm, USER_END - PGSIZE, PGSIZE, 0, 0, VM_READ | VM_WRITE | VM_ANON);
+        //这个函数需要大家在 proc.c 中的 task_init 函数中为每个进程调用，创建文件表并保存在 task struct 中。
+        task[i]->files = (struct files_struct *)file_init();
 #ifdef DEBUG
         print_task("SET", task[i]);
 #endif

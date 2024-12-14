@@ -14,6 +14,9 @@ struct sbiret sbi_ecall(uint64_t eid, uint64_t fid,
 
 struct sbiret sbi_set_timer(uint64_t stime_value);
 struct sbiret sbi_debug_console_write_byte(uint8_t byte);
+struct sbiret sbi_debug_console_read(unsigned long num_bytes,
+                                     unsigned long base_addr_lo,
+                                     unsigned long base_addr_hi);
 
 #define SBI_SRST_RESET_TYPE_SHUTDOWN 0
 #define SBI_SRST_RESET_TYPE_COLD_REBOOT 1
