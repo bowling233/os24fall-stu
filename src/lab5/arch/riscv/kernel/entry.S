@@ -24,9 +24,18 @@
 .endm
 .extern trap_handler
     .section .text.entry
+.align 2
+.park:
+    wfi
+    j .park
     .align 2
     .globl _traps
 _traps:
+    # remove stvec to prevent double trap
+    csrrw t0, stvec, t0
+    la t0, .park
+    csrrw t0, stvec, t0
+
     # 进入 trap 的时候需要切换到内核栈
     # 如果是内核线程（没有用户栈）触发了异常，则不需要进行切换。（内核线程的 sp 永远指向的内核栈，且 sscratch 为 0）
     csrrw sp, sscratch, sp
@@ -87,7 +96,7 @@ __ret_from_fork:
     ld a1, 248(sp) # sepc
     csrw sepc, a1
     ld x1, 0(sp)
-    # x2(sp) will be restored last
+    #ld x2, 8(sp)
     ld x3, 16(sp)
     ld x4, 24(sp)
     ld x5, 32(sp)
@@ -117,7 +126,6 @@ __ret_from_fork:
     ld x29, 224(sp)
     ld x30, 232(sp)
     ld x31, 240(sp)
-    ld sp, 8(sp) # x2(sp)
     addi sp, sp, 8*32
 
     # 处理完成后需要再切换回来
@@ -128,6 +136,9 @@ __ret_from_fork:
 2:
 
     # 4. return from trap
+    csrrw t0, stvec, t0
+    la t0, _traps
+    csrrw t0, stvec, t0
 
     sret
 

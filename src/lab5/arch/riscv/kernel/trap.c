@@ -20,21 +20,20 @@ struct pt_regs
 uint64_t do_fork(struct pt_regs *regs)
 {
     uint64_t new_pid = ++nr_tasks;
-#ifdef DEBUG
-    Log("new_pid: %lx", new_pid);
-#endif
+    printk("[PID = %d] forked from [PID = %d]", new_pid, current->pid);
     // 将新进程加入调度队列
     struct task_struct *new_task = task[new_pid] = (struct task_struct *)alloc_page();
     memcpy(new_task, current, PGSIZE);
     new_task->pid = new_pid;
     new_task->thread.ra = (uint64_t)__ret_from_fork;
 #ifdef DEBUG
+    Log("old_task page = %lx", current);
     Log("old_task sp = %lx, offset in page = %lx", regs->x[1], regs->x[1] - (uint64_t)current);
     Log("new_task page = %lx", new_task);
 #endif
     uint64_t regs_offest = (uint64_t)regs - (uint64_t)current;
     new_task->thread.sp = ((uint64_t)new_task + regs_offest);
-    struct pt_regs *new_regs = (struct pt_regs*)new_task->thread.sp;
+    struct pt_regs *new_regs = (struct pt_regs *)new_task->thread.sp;
     new_regs->x[9] = 0;
     new_regs->sepc += 4;
     new_task->thread.sscratch = csr_read(sscratch);
@@ -54,16 +53,24 @@ uint64_t do_fork(struct pt_regs *regs)
         for (uint64_t parent_page = parent_vma->vm_start; parent_page < parent_vma->vm_end; parent_page += PGSIZE)
         {
 #ifdef DEBUG
-            Log("duplicating parent_page: %lx", parent_page);
+            Log("COW parent_page: %lx", parent_page);
 #endif
-            uint64_t pte = find_pte(current->pgd, parent_page);
-            if(pte)
-            {
-                void *child_page = alloc_page();
-                memcpy(child_page, (void *)(PTE2VA(pte)), PGSIZE);
-                create_mapping(new_task->pgd, parent_page, VA2PA((uint64_t)child_page), PGSIZE, pte & 0x3ff);
-            }
+            uint64_t *pte_p = find_pte(current->pgd, parent_page);
+            uint64_t pte = pte_p ? *pte_p : 0;
+            if (!pte)
+                continue;
+
+            // 将物理页的引用计数加一
+            uint64_t *parent_page_va = (uint64_t *)PTE2VA(pte);
+            get_page((void *)parent_page_va);
+            // 将父进程的该地址对应的页表项的 PTE_W 位置 0
+            *pte_p &= ~PTE_W;
+            pte = *pte_p; // 重新读取 pte
+            // 为子进程创建一个新的页表项，指向父进程的物理页，且权限不带 PTE_W
+            create_mapping(new_task->pgd, parent_page, VA2PA(PTE2VA(pte)), PGSIZE, pte & PTE_FLAGS_MASK);
         }
+        // flush TLB because we modifid page table in use
+        asm volatile("sfence.vma");
         parent_vma = parent_vma->vm_next;
     }
     // 处理父子进程的返回值
@@ -76,7 +83,7 @@ uint64_t do_fork(struct pt_regs *regs)
 void do_page_fault(struct pt_regs *regs, uint64_t stval, uint64_t scause)
 {
 #ifdef DEBUG
-    Log("stval: %lx", stval);
+    Log("pc: %lx, stval: %lx", regs->sepc, stval);
 #endif
     // 通过 stval 获得访问出错的虚拟内存地址（Bad Address）
     // 通过 find_vma() 查找 bad address 是否在某个 vma 中
@@ -84,7 +91,12 @@ void do_page_fault(struct pt_regs *regs, uint64_t stval, uint64_t scause)
     // 如果不在，则出现非预期错误，可以通过 Err 宏输出错误信息
     if (!vma)
     {
-        Err("page fault at %lx, bad address %lx", regs->sepc, stval);
+        Log("current vma: %lx", current->mm.mmap);
+        for (struct vm_area_struct *vma = current->mm.mmap; vma; vma = vma->vm_next)
+        {
+            Log("vma: %lx %lx %lx %lx %lx", vma->vm_start, vma->vm_end, vma->vm_pgoff, vma->vm_filesz, vma->vm_flags);
+        }
+        Err("VMA not found");
     }
     // 如果在，则根据 vma 的 flags 权限判断当前 page fault 是否合法
     // 如果非法（比如触发的是 instruction page fault 但 vma 权限不允许执行），则 Err 输出错误信息
@@ -93,23 +105,61 @@ void do_page_fault(struct pt_regs *regs, uint64_t stval, uint64_t scause)
     case 0x000000000000000C:
         if (!(vma->vm_flags & VM_EXEC))
         {
-            Err("instruction page fault at %lx, bad address %lx", regs->sepc, stval);
+            Err("VMA not executable");
         }
         break;
     case 0x000000000000000D:
         if (!(vma->vm_flags & VM_READ))
         {
-            Err("load page fault at %lx, bad address %lx", regs->sepc, stval);
+            Err("VMA not readable");
         }
         break;
     case 0x000000000000000F:
         if (!(vma->vm_flags & VM_WRITE))
         {
-            Err("store page fault at %lx, bad address %lx", regs->sepc, stval);
+            Err("VMA not writable");
+        }
+        else
+        {
+            // 如果发生了写错误，且 vma 的 VM_WRITE 位为 1，而且对应地址有 pte（进行了映射）但 pte 的 PTE_W 位为 0，那么就可以断定这是一个写时复制的页面，我们只需要在这个时候拷贝一份原来的页面，重新创建一个映射即可。
+            uint64_t *pte_p = find_pte(current->pgd, stval);
+            uint64_t pte = pte_p ? *pte_p : 0;
+            if (!pte) // no PTE, not COW
+                break;
+
+            if ((pte & PTE_W) != 0) // PTE_W is not 0, not COW
+                break;
+
+#ifdef DEBUG
+            Log("COW");
+#endif
+            // 拷贝了页面之后，别忘了将原来的页面引用计数减一。这样父子进程想要写入的时候，都会触发 COW，并拷贝一个新页面，都拷贝完成后，原来的页面将自动 free 掉。
+            // 进一步的，父进程 COW 后，子进程再进行写入的时候，也可以在这时判断引用计数，如果计数为 1，说明这个页面只有一个引用，那么就可以直接将 pte 的 PTE_W 位再置 1，这样就可以直接写入了，免去一次额外的复制。
+            if (get_page_refcnt((void *)PTE2VA(pte)) > 1) // cow
+            {
+#ifdef DEBUG
+                Log("page copy");
+#endif
+                void *old_page = (void *)PTE2VA(pte);
+                uint64_t old_flags = pte & PTE_FLAGS_MASK;
+                void *new_page = alloc_page();
+                uint64_t new_flags = old_flags | PTE_W;
+                memcpy(new_page, old_page, PGSIZE);
+                create_mapping(current->pgd, PGROUNDDOWN(stval), VA2PA((uint64_t)new_page), PGSIZE, new_flags);
+                put_page(old_page);
+            }
+            else // direct write
+            {
+#ifdef DEBUG
+                Log("direct write");
+#endif
+                *pte_p = pte | PTE_W;
+            }
+            return;
         }
         break;
     default:
-        Err("unknown page fault at %lx, bad address %lx", regs->sepc, stval);
+        Err("unknown page fault");
         break;
     }
 #ifdef DEBUG

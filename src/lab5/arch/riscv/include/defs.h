@@ -65,11 +65,15 @@
 #define PA2PTE(addr) (((addr) >> 2) & 0x003ffffffffffc00)
 #define PTE2PA(pte) (((pte) & 0x003ffffffffffc00) << 2)
 #define PTE2VA(pte) (PA2VA_OFFSET + PTE2PA(pte))
-#define VA2PA(addr) ((addr) - PA2VA_OFFSET)
+#define VA2PA(x) ((x - (uint64_t)PA2VA_OFFSET))
+#define PA2VA(x) ((x + (uint64_t)PA2VA_OFFSET))
+#define PFN2PHYS(x) (((uint64_t)(x) << 12) + PHY_START)
+#define PHYS2PFN(x) ((((uint64_t)(x) - PHY_START) >> 12))
 #define VA2PTE(addr) (PA2PTE(VA2PA(addr)))
 
 #define SATP_SV39 (8L << 60)
 #define SATP_PPN(addr) (((addr) >> 12) & 0xfffffffffff)
+#define PTE_FLAGS_MASK 0x3ff
 
 // lab4
 

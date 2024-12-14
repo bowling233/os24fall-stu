@@ -117,7 +117,7 @@ void load_program(struct task_struct *task)
             // do mapping
             // 它需要被分配到以 p_vaddr 为首地址的虚拟内存位置，在内存中它占用大小为 p_memsz。
 #ifdef DEBUG
-    Log("PF_X: %d PF_W: %d PF_R: %d", phdr->p_flags & PF_X, phdr->p_flags & PF_W, phdr->p_flags & PF_R);
+            Log("PF_X: %d PF_W: %d PF_R: %d", phdr->p_flags & PF_X, phdr->p_flags & PF_W, phdr->p_flags & PF_R);
 #endif
             uint64_t vma_flags = ((phdr->p_flags & PF_X) ? VM_EXEC : 0) | ((phdr->p_flags & PF_W) ? VM_WRITE : 0) | ((phdr->p_flags & PF_R) ? VM_READ : 0);
             uint64_t vma_start = PGROUNDDOWN(phdr->p_vaddr);
