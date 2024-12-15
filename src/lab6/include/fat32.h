@@ -9,8 +9,8 @@ struct __attribute__((packed)) fat32_bpb {
     uint8_t oem_name[8];
     uint16_t bytes_per_sec;
     uint8_t sec_per_clus;
-    uint16_t rsvd_sec_cnt;
-    uint8_t num_fats;
+    uint16_t rsvd_sec_cnt; // Number of reserved sectors in the reserved region of the volume starting at the first sector of the volume.
+    uint8_t num_fats; // The count of file allocation tables (FATs) on the volume.
     uint16_t root_ent_cnt;
     uint16_t tot_sec16;
     uint8_t media;
@@ -19,7 +19,7 @@ struct __attribute__((packed)) fat32_bpb {
     uint16_t num_heads;
     uint32_t hidd_sec;
     uint32_t tot_sec32;
-    uint32_t fat_sz32;
+    uint32_t fat_sz32; // This field is the FAT32 32-bit count of sectors occupied by one FAT.
     uint16_t ext_flags;
     uint16_t fs_ver;
     uint32_t root_clus;
@@ -55,7 +55,7 @@ struct fat32_dir_entry {
     uint16_t starthi;
     uint16_t time;
     uint16_t date;
-    uint16_t startlow;
+    uint16_t startlow; // Low word of first data cluster number for file/directory described by this entry.
     uint32_t size;
 };
 

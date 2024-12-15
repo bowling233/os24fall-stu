@@ -96,6 +96,7 @@ void virtio_blk_cmd(uint32_t type, uint32_t sector, void* buf) {
 }
 
 void virtio_blk_read_sector(uint64_t sector, void *buf) {
+    Log("sector: %#x", sector);
     uint64_t original_idx = virtio_blk_ring.used->idx;
     virtio_blk_cmd(VIRTIO_BLK_T_IN, sector, buf);
     while (1) {

@@ -3,6 +3,7 @@
 #include "string.h"
 #include "vm.h"
 #include "printk.h"
+#include "virtio.h"
 
 void print_pgtbl(uint64_t *pgtbl)
 {
@@ -78,6 +79,9 @@ void setup_vm_final(void)
 
     // set satp with swapper_pg_dir
     csr_write(satp, (SATP_PPN(VA2PA((uint64_t)swapper_pg_dir)) | SATP_SV39));
+
+    // lab6: virtio
+    create_mapping(swapper_pg_dir, io_to_virt(VIRTIO_START), VIRTIO_START, VIRTIO_SIZE * VIRTIO_COUNT, PTE_W | PTE_R | PTE_V);
 
     // flush TLB
     asm volatile("sfence.vma zero, zero");

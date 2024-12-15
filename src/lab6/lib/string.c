@@ -37,3 +37,23 @@ int strlen(const char *s) {
     }
     return len;
 }
+
+char *strcpy(char *dest, const char *src) {
+    char *d = dest;
+    const char *s = src;
+    while (*s) {
+        *d = *s;
+        ++d;
+        ++s;
+    }
+    *d = '\0';
+    return dest;
+}
+
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && *s2 && *s1 == *s2) {
+        ++s1;
+        ++s2;
+    }
+    return *s1 - *s2;
+}

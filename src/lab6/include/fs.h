@@ -19,13 +19,13 @@
 #define FS_TYPE_EXT2  0x2
 
 struct fat32_dir {
-    uint32_t cluster;
-    uint32_t index;     // entry index in the cluster
+    uint32_t cluster;   // 文件的目录项所在的簇
+    uint32_t index;     // 文件的目录项是该簇中的第几个目录项
 };
 
 struct fat32_file {
-    uint32_t cluster;
-    struct fat32_dir dir;
+    uint32_t cluster;   // 文件开头所在的簇
+    struct fat32_dir dir;   // 文件的目录项信息
 };
 
 struct file {   // Opened file in a thread.

@@ -15,7 +15,5 @@
 extern struct task_struct *current;
 
 void do_syscall(struct pt_regs *regs);
-int64_t sys_write(uint64_t fd, const char *buf, uint64_t len);
-uint64_t sys_getpid();
 
 #endif

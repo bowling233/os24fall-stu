@@ -96,6 +96,9 @@ int64_t sys_write(uint64_t fd, const char *buf, uint64_t len)
 
 int64_t sys_read(uint64_t fd, char *buf, uint64_t len)
 {
+    if(fd != 0)
+        Log("fd = %d, buf = %lx, len = %d", fd, buf, len);
+
     int64_t ret;
     struct file *file = &(current->files->fd_array[fd]);
     if (file->opened == 0)
@@ -112,42 +115,103 @@ int64_t sys_read(uint64_t fd, char *buf, uint64_t len)
         }
         else
         {
-            printk("file not readable\n");
+            Log("file not readable\n");
             return -1;
         }
+    }
+    if(fd != 0)
+        Log("ret = %d", ret);
+    return ret;
+}
+
+int sys_openat(int dirfd, const char *pathname, int flags, ... /*mode_t mode*/)
+{
+    Log("sys_openat dirfd = %d, pathname = %s, flags = %d", dirfd, pathname, flags);
+    // 你需要寻找一个空闲的文件描述符，然后调用 file_open 函数来初始化这个文件描述符。
+    int ret = -1;
+    for (int i = 0; i < MAX_FILE_NUMBER; i++)
+    {
+        Log("fd_array[%d].opened = %d", i, current->files->fd_array[i].opened);
+        if (current->files->fd_array[i].opened != 0)
+            continue;
+
+        ret = file_open(&(current->files->fd_array[i]), pathname, flags);
+        if (ret == 0)
+        {
+            current->files->fd_array[i].opened = 1;
+            return i;
+        }
+        else if (ret == -1)
+        {
+            Log("file_open failed");
+            return -1;
+        }
+        break;
+    }
+    if (ret == -1)
+    {
+        Log("no available fd");
+    }
+    return ret;
+}
+
+int sys_lseek(int fd, int offset, int whence)
+{
+    Log("sys_lseek fd = %d, offset = %d, whence = %d", fd, offset, whence);
+    int ret = -1;
+    struct file *file = &(current->files->fd_array[fd]);
+    if (file->opened == 0)
+    {
+        Log("file not opened\n");
+        return ERROR_FILE_NOT_OPEN;
+    }
+    else
+    {
+        // ret = file->sys_lseek(file, offset, whence);
+    }
+    return ret;
+}
+
+int close(int fd)
+{
+    Log("close fd = %d", fd);
+    int ret = -1;
+    struct file *file = &(current->files->fd_array[fd]);
+    if (file->opened == 0)
+    {
+        Log("file not opened\n");
+        return ERROR_FILE_NOT_OPEN;
+    }
+    else
+    {
+        ret = file->opened = 0;
     }
     return ret;
 }
 
 void do_syscall(struct pt_regs *regs)
 {
-#ifdef DEBUG
-    printk("systemcall: ");
-#endif
     switch (regs->x[16]) // syscall a7 -> x17 -> x[16]
     {
     case SYS_WRITE:
-#ifdef DEBUG
-        printk("write: fd = %d, buf = %p, count = %d\n", regs->x[9], regs->x[10], regs->x[11]);
-#endif
         regs->x[9] = sys_write(regs->x[9], (const char *)regs->x[10], regs->x[11]);
         break;
     case SYS_READ:
-#ifdef DEBUG
-        printk("read: fd = %d, buf = %p, count = %d\n", regs->x[9], regs->x[10], regs->x[11]);
-#endif
         regs->x[9] = sys_read(regs->x[9], (char *)regs->x[10], regs->x[11]);
         break;
+    case SYS_OPENAT:
+        regs->x[9] = sys_openat(regs->x[9], (const char *)regs->x[10], regs->x[11]);
+        break;
+    case SYS_CLOSE:
+        regs->x[9] = close(regs->x[9]);
+        break;
+    case SYS_LSEEK:
+        sys_lseek(regs->x[9], regs->x[10], regs->x[11]);
+        break;
     case SYS_GETPID:
-#ifdef DEBUG
-        printk("getpid\n");
-#endif
         regs->x[9] = current->pid;
         break;
     case SYS_CLONE:
-#ifdef DEBUG
-        printk("clone\n");
-#endif
         regs->x[9] = do_fork(regs);
         break;
     default:

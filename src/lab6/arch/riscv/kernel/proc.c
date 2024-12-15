@@ -99,7 +99,9 @@ void schedule()
             {
                 (*p)->counter = ((*p)->counter >> 1) +
                                 (*p)->priority;
-                print_task("SET ", (*p));
+#ifdef DEBUG
+                Log("SET ", (*p));
+#endif
             }
     }
     switch_to(task[next]);
