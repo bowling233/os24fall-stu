@@ -75,7 +75,7 @@ int64_t sys_write(uint64_t fd, const char *buf, uint64_t len)
     struct file *file = &(current->files->fd_array[fd]);
     if (file->opened == 0)
     {
-        printk("file not opened\n");
+        Log("file not opened\n");
         return ERROR_FILE_NOT_OPEN;
     }
     else
@@ -87,7 +87,7 @@ int64_t sys_write(uint64_t fd, const char *buf, uint64_t len)
         }
         else
         {
-            printk("file not writable\n");
+            Log("file not writable\n");
             return -1;
         }
     }

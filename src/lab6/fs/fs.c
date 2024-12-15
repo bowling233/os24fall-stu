@@ -10,10 +10,11 @@ struct files_struct *file_init()
     // alloc pages for files_struct, and initialize stdin, stdout, stderr
     // 这个函数需要大家在 proc.c 中的 task_init 函数中为每个进程调用，创建文件表并保存在 task struct 中。
     // 根据 files_struct 的大小分配页空间
-    struct files_struct *ret = (struct files_struct *)alloc_page();
+    struct files_struct *ret = (struct files_struct *)alloc_pages(sizeof(struct files_struct)/PGSIZE + 1);
     // 保证其他未使用的文件的 opened 字段为 0
     for(int i = 0; i < MAX_FILE_NUMBER; i++)
     {
+        ret->fd_array[i].opened = 0;
     }
     // 为 stdin、stdout、stderr 赋值，比如 stdin 你可以：
     ret->fd_array[0].opened = 1;
