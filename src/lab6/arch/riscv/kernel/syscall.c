@@ -167,14 +167,14 @@ int sys_lseek(int fd, int offset, int whence)
     }
     else
     {
-        // ret = file->sys_lseek(file, offset, whence);
+        ret = file->lseek(file, offset, whence);
     }
     return ret;
 }
 
-int close(int fd)
+int sys_close(int fd)
 {
-    Log("close fd = %d", fd);
+    Log("sys_close fd = %d", fd);
     int ret = -1;
     struct file *file = &(current->files->fd_array[fd]);
     if (file->opened == 0)
@@ -203,7 +203,7 @@ void do_syscall(struct pt_regs *regs)
         regs->x[9] = sys_openat(regs->x[9], (const char *)regs->x[10], regs->x[11]);
         break;
     case SYS_CLOSE:
-        regs->x[9] = close(regs->x[9]);
+        regs->x[9] = sys_close(regs->x[9]);
         break;
     case SYS_LSEEK:
         sys_lseek(regs->x[9], regs->x[10], regs->x[11]);

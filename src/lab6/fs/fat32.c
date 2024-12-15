@@ -158,17 +158,20 @@ end:
 int64_t fat32_lseek(struct file *file, int64_t offset, uint64_t whence)
 {
     if (whence == SEEK_SET)
-    {
-        file->cfo = 0 /* to calculate */;
+    { // The file offset is set to offset bytes.
+        file->cfo = offset;
     }
     else if (whence == SEEK_CUR)
     {
-        file->cfo = 0 /* to calculate */;
+        // The file offset is set to its current location plus offset bytes.
+        file->cfo = file->cfo + offset;
     }
     else if (whence == SEEK_END)
     {
-        /* Calculate file length */
-        file->cfo = 0 /* to calculate */;
+        // The file offset is set to the size of the file plus offset bytes.
+        struct fat32_dir_entry* dir_entries = (struct fat32_dir_entry*)fat32_buf;
+        virtio_blk_read_sector(cluster_to_sector(file->fat32_file.dir.cluster), fat32_buf);
+        file->cfo = dir_entries[file->fat32_file.dir.index].size + offset;
     }
     else
     {
@@ -194,11 +197,9 @@ int64_t fat32_read(struct file *file, void *buf, uint64_t len)
     uint64_t read_len = 0;
 
     // Get the directory entry to determine the file size
-    struct fat32_dir_entry dir_entry;
-    uint64_t dir_sector = cluster_to_sector(fat32_file->dir.cluster);
-    virtio_blk_read_sector(dir_sector, fat32_buf);
-    memcpy(&dir_entry, &((struct fat32_dir_entry *)fat32_buf)[fat32_file->dir.index], sizeof(struct fat32_dir_entry));
-    uint64_t file_size = dir_entry.size;
+    struct fat32_dir_entry *dir_entries = (struct fat32_dir_entry *)fat32_buf;
+    virtio_blk_read_sector(cluster_to_sector(fat32_file->dir.cluster), fat32_buf);
+    uint64_t file_size = dir_entries[fat32_file->dir.index].size;
 
     // Adjust len if it exceeds the file size
     if (cfo + len > file_size)
@@ -234,6 +235,47 @@ int64_t fat32_read(struct file *file, void *buf, uint64_t len)
 
 int64_t fat32_write(struct file *file, const void *buf, uint64_t len)
 {
-    /* todo: fat32_write */
-    return 0;
+    Log("file->cfo = %d, len = %d", file->cfo, len);
+    /* write content to file, and return written length */
+    struct fat32_file *fat32_file = &(file->fat32_file);
+    uint64_t cluster = fat32_file->cluster;
+    uint64_t cfo = file->cfo;
+    uint64_t write_len = 0;
+
+    // Get the directory entry to determine the file size
+    struct fat32_dir_entry *dir_entries = (struct fat32_dir_entry *)fat32_buf;
+    virtio_blk_read_sector(cluster_to_sector(fat32_file->dir.cluster), fat32_buf);
+    uint64_t file_size = dir_entries[fat32_file->dir.index].size;
+
+    // Adjust len if it exceeds the file size
+    if (cfo + len > file_size)
+    {
+        len = file_size - cfo;
+    }
+
+    while (cfo >= fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE)
+    {
+        cluster = next_cluster(cluster);
+        cfo -= fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE;
+    }
+
+    while (write_len < len)
+    {
+        uint64_t sector = cluster_to_sector(cluster);
+        virtio_blk_read_sector(sector, fat32_buf);
+        uint64_t offset = cfo % (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE);
+        uint64_t to_write = (len - write_len) < (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE - offset) ? (len - write_len) : (fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE - offset);
+        memcpy(fat32_buf + offset, buf + write_len, to_write);
+        virtio_blk_write_sector(sector, fat32_buf);
+        write_len += to_write;
+        cfo += to_write;
+        if (cfo >= fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE)
+        {
+            cluster = next_cluster(cluster);
+            cfo -= fat32_volume.sec_per_cluster * VIRTIO_BLK_SECTOR_SIZE;
+        }
+    }
+
+    file->cfo += write_len;
+    return write_len;
 }
